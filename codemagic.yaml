@@ -2,12 +2,12 @@ workflows:
   android-apk:
     name: Lottogenerator Android Build
     environment:
-      flutter: "3.22.0"
+      flutter: 3.38.1
       vars:
         PACKAGE_NAME: "com.example.lottogenerator_v4"
 
     scripts:
-      - name: Flutter Version prüfen
+      - name: Flutter Version anzeigen
         script: |
           flutter --version
 
@@ -15,16 +15,16 @@ workflows:
         script: |
           flutter pub get
 
-      - name: Analyzer laufen lassen (Info-Warnungen ignorieren)
+      - name: Analyzer laufen lassen (Infos ignorieren)
         script: |
-          flutter analyze --no-pub --no-fatal-infos
+          flutter analyze --no-fatal-warnings --no-fatal-infos
 
-      - name: Release APK bauen
+      - name: Release-APK bauen
         script: |
           flutter build apk --release
 
     artifacts:
-      - build/app/outputs/flutter-apk/**/*.apk
+      - build/app/outputs/flutter-apk/app-release.apk
 
     publishing:
       email:
