@@ -1,0 +1,30 @@
+workflows:
+  android-apk:
+    name: Lottogenerator Android Build
+    environment:
+      flutter: 3.22.0
+
+    scripts:
+      - name: Flutter Version prüfen
+        script: |
+          flutter --version
+
+      - name: Dependencies installieren
+        script: |
+          flutter pub get
+
+      - name: Analyzer laufen lassen (Info-Warnungen ignorieren)
+        script: |
+          flutter analyze --no-pub --no-fatal-infos
+
+      - name: Release APK bauen
+        script: |
+          flutter build apk --release
+
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+
+    publishing:
+      email:
+        recipients:
+          - funatiker1968@gmail.com
