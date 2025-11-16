@@ -1,6 +1,5 @@
-// File: android/app/build.gradle.kts
-// Regenerated: 2025-11-16 15:47 MEZ
-// Purpose: Saubere Android-App-Konfiguration für Lottogenerator_v4 (Flutter 3.38.x)
+import com.android.build.api.dsl.ApplicationExtension
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("com.android.application")
@@ -20,6 +19,26 @@ android {
         versionName = "1.0.0"
     }
 
+    buildTypes {
+        getByName("release") {
+            // Kein Code-Shrinker, kein Resource-Shrinker -> sicher & einfach
+            isMinifyEnabled = false
+            isShrinkResources = false
+
+            // Debug-Signing, bis wir später echtes Keystore-Signing machen
+            signingConfig = signingConfigs.getByName("debug")
+
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        getByName("debug") {
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -28,16 +47,8 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            // ProGuard / R8 kann später dazukommen, wenn nötig
-        }
-    }
 }
 
-// Flutter-Plugin-Konfiguration: Pfad zum Flutter-Projekt
 flutter {
     source = "../.."
 }
