@@ -1,5 +1,5 @@
 workflows:
-  lottogenerator-android:
+  android-apk:
     name: Lottogenerator Android Build
     environment:
       flutter: "3.22.0"
