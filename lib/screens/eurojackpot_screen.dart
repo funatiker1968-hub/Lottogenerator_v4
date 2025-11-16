@@ -1,6 +1,6 @@
-// EurojackpotScreen v1 – erstellt am 16.11.2025, 16:00 CET
-
+import 'dart:async';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 class EurojackpotScreen extends StatefulWidget {
@@ -11,309 +11,594 @@ class EurojackpotScreen extends StatefulWidget {
 }
 
 class _EurojackpotScreenState extends State<EurojackpotScreen> {
-  static const int _maxMain = 50;     // 1–50
-  static const int _mainCount = 5;    // 5 Zahlen
-  static const int _maxEuro = 12;     // 1–12
-  static const int _euroCount = 2;    // 2 Eurozahlen
-
-  final List<bool> _mainSelected = List<bool>.filled(_maxMain, false);
-  final List<bool> _euroSelected = List<bool>.filled(_maxEuro, false);
+  static const int tipCount = 8;
+  static const int mainMaxNumber = 50;      // 1–50
+  static const int mainNumbersPerTip = 5;   // 5 Zahlen pro Tipp
+  static const int euroMaxNumber = 12;      // 1–12
+  static const int euroNumbersPerTip = 2;   // 2 Eurozahlen pro Tipp
 
   final Random _random = Random();
 
-  bool get _isComplete =>
-      _mainSelected.where((e) => e).length == _mainCount &&
-      _euroSelected.where((e) => e).length == _euroCount;
+  /// Hauptzahlen (5 aus 50) – pro Tipp eine Liste mit 50 Booleans
+  final List<List<bool>> _mainSelected =
+      List.generate(tipCount, (_) => List<bool>.filled(mainMaxNumber, false));
+  final List<List<int>> _mainGenerated =
+      List.generate(tipCount, (_) => <int>[]);
 
-  List<int> _currentMainNumbers() {
-    final result = <int>[];
-    for (int i = 0; i < _maxMain; i++) {
-      if (_mainSelected[i]) {
-        result.add(i + 1);
+  /// Eurozahlen (2 aus 12) – pro Tipp eine Liste mit 12 Booleans
+  final List<List<bool>> _euroSelected =
+      List.generate(tipCount, (_) => List<bool>.filled(euroMaxNumber, false));
+  final List<List<int>> _euroGenerated =
+      List.generate(tipCount, (_) => <int>[]);
+
+  /// Welcher Tipp ist gerade aktiv (0–7)
+  int _currentTipIndex = 0;
+
+  /// Lauflicht-Kreuz für Hauptzahlen (1–50)
+  int? _currentMainHighlight;
+
+  /// Lauflicht-Kreuz für Eurozahlen (1–12)
+  int? _currentEuroHighlight;
+
+  /// Während Animation gesperrt
+  bool _isGenerating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetAllTips();
+  }
+
+  void _resetAllTips() {
+    for (int t = 0; t < tipCount; t++) {
+      for (int i = 0; i < mainMaxNumber; i++) {
+        _mainSelected[t][i] = false;
       }
+      for (int i = 0; i < euroMaxNumber; i++) {
+        _euroSelected[t][i] = false;
+      }
+      _mainGenerated[t].clear();
+      _euroGenerated[t].clear();
     }
-    result.sort();
-    return result;
+    _currentTipIndex = 0;
+    _currentMainHighlight = null;
+    _currentEuroHighlight = null;
+    _isGenerating = false;
   }
 
-  List<int> _currentEuroNumbers() {
-    final result = <int>[];
-    for (int i = 0; i < _maxEuro; i++) {
-      if (_euroSelected[i]) {
-        result.add(i + 1);
+  void _clearTip(int tipIndex) {
+    setState(() {
+      for (int i = 0; i < mainMaxNumber; i++) {
+        _mainSelected[tipIndex][i] = false;
       }
+      for (int i = 0; i < euroMaxNumber; i++) {
+        _euroSelected[tipIndex][i] = false;
+      }
+      _mainGenerated[tipIndex].clear();
+      _euroGenerated[tipIndex].clear();
+
+      if (_currentTipIndex == tipIndex) {
+        _currentMainHighlight = null;
+        _currentEuroHighlight = null;
+      }
+    });
+  }
+
+  void _clearAllTips() {
+    setState(_resetAllTips);
+  }
+
+  /// Laufendes Kreuz über alle 50 Zahlen + Setzen der 5 Treffer
+  Future<void> _runTipAnimation(int tipIndex) async {
+    // Zufallszahlen bestimmen
+    final Set<int> mainSet = <int>{};
+    while (mainSet.length < mainNumbersPerTip) {
+      mainSet.add(_random.nextInt(mainMaxNumber) + 1);
     }
-    result.sort();
-    return result;
-  }
 
-  void _toggleMain(int index) {
-    setState(() {
-      final bool currently = _mainSelected[index];
-      if (currently) {
-        _mainSelected[index] = false;
-      } else {
-        final int count = _mainSelected.where((e) => e).length;
-        if (count < _mainCount) {
-          _mainSelected[index] = true;
+    final Set<int> euroSet = <int>{};
+    while (euroSet.length < euroNumbersPerTip) {
+      euroSet.add(_random.nextInt(euroMaxNumber) + 1);
+    }
+
+    // Tipp leeren
+    for (int i = 0; i < mainMaxNumber; i++) {
+      _mainSelected[tipIndex][i] = false;
+    }
+    for (int i = 0; i < euroMaxNumber; i++) {
+      _euroSelected[tipIndex][i] = false;
+    }
+    _mainGenerated[tipIndex] = <int>[];
+    _euroGenerated[tipIndex] = <int>[];
+
+    // Lauflicht über Hauptzahlen 1–50: Kreuz läuft, bleibt bei Treffern stehen
+    for (int n = 1; n <= mainMaxNumber; n++) {
+      if (!mounted) return;
+
+      final bool isTarget = mainSet.contains(n);
+      setState(() {
+        _currentMainHighlight = n;
+
+        if (isTarget) {
+          _mainSelected[tipIndex][n - 1] = true;
+          if (!_mainGenerated[tipIndex].contains(n)) {
+            _mainGenerated[tipIndex].add(n);
+            _mainGenerated[tipIndex].sort();
+          }
         }
-      }
-    });
-  }
+      });
 
-  void _toggleEuro(int index) {
+      // Treffer etwas länger „angeleuchtet“
+      await Future.delayed(Duration(milliseconds: isTarget ? 120 : 40));
+    }
+
+    if (!mounted) return;
     setState(() {
-      final bool currently = _euroSelected[index];
-      if (currently) {
-        _euroSelected[index] = false;
-      } else {
-        final int count = _euroSelected.where((e) => e).length;
-        if (count < _euroCount) {
-          _euroSelected[index] = true;
+      _currentMainHighlight = null;
+    });
+
+    // Lauflicht über Eurozahlen 1–12
+    for (int n = 1; n <= euroMaxNumber; n++) {
+      if (!mounted) return;
+
+      final bool isTarget = euroSet.contains(n);
+      setState(() {
+        _currentEuroHighlight = n;
+
+        if (isTarget) {
+          _euroSelected[tipIndex][n - 1] = true;
+          if (!_euroGenerated[tipIndex].contains(n)) {
+            _euroGenerated[tipIndex].add(n);
+            _euroGenerated[tipIndex].sort();
+          }
         }
-      }
-    });
-  }
+      });
 
-  void _clearAll() {
+      await Future.delayed(Duration(milliseconds: isTarget ? 140 : 50));
+    }
+
+    if (!mounted) return;
     setState(() {
-      for (int i = 0; i < _maxMain; i++) {
-        _mainSelected[i] = false;
-      }
-      for (int i = 0; i < _maxEuro; i++) {
-        _euroSelected[i] = false;
-      }
+      _currentEuroHighlight = null;
     });
   }
 
-  void _generateRandom() {
+  Future<void> _generateSingleTip(int tipIndex) async {
+    if (_isGenerating) return;
+
     setState(() {
-      // Hauptzahlen auffüllen
-      final currentMain = _currentMainNumbers().toSet();
-      final List<int> poolMain =
-          List<int>.generate(_maxMain, (i) => i + 1)..removeWhere(currentMain.contains);
-      while (currentMain.length + (currentMain.length < _mainCount ? 1 : 0) <= _mainCount &&
-          currentMain.length < _mainCount &&
-          poolMain.isNotEmpty) {
-        final pick = poolMain.removeAt(_random.nextInt(poolMain.length));
-        currentMain.add(pick);
-      }
+      _isGenerating = true;
+      _currentTipIndex = tipIndex;
+    });
 
-      // Auf Selektion anwenden
-      for (int i = 0; i < _maxMain; i++) {
-        _mainSelected[i] = currentMain.contains(i + 1);
-      }
+    await _runTipAnimation(tipIndex);
 
-      // Eurozahlen auffüllen
-      final currentEuro = _currentEuroNumbers().toSet();
-      final List<int> poolEuro =
-          List<int>.generate(_maxEuro, (i) => i + 1)..removeWhere(currentEuro.contains);
-      while (currentEuro.length + (currentEuro.length < _euroCount ? 1 : 0) <= _euroCount &&
-          currentEuro.length < _euroCount &&
-          poolEuro.isNotEmpty) {
-        final pick = poolEuro.removeAt(_random.nextInt(poolEuro.length));
-        currentEuro.add(pick);
-      }
+    if (!mounted) return;
+    setState(() {
+      _isGenerating = false;
+    });
+  }
 
-      for (int i = 0; i < _maxEuro; i++) {
-        _euroSelected[i] = currentEuro.contains(i + 1);
+  Future<void> _generateAllTips() async {
+    if (_isGenerating) return;
+
+    setState(() {
+      _isGenerating = true;
+    });
+
+    for (int t = 0; t < tipCount; t++) {
+      if (!mounted) return;
+      setState(() {
+        _currentTipIndex = t;
+      });
+      await _runTipAnimation(t);
+      await Future.delayed(const Duration(milliseconds: 250));
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isGenerating = false;
+      _currentTipIndex = 0;
+      _currentMainHighlight = null;
+      _currentEuroHighlight = null;
+    });
+  }
+
+  /// Manuelles Anklicken im 5-aus-50-Feld
+  void _onMainNumberTap(int number) {
+    if (_isGenerating) return;
+    final int tipIndex = _currentTipIndex;
+    final int idx = number - 1;
+
+    setState(() {
+      final bool selected = _mainSelected[tipIndex][idx];
+
+      if (selected) {
+        _mainSelected[tipIndex][idx] = false;
+        _mainGenerated[tipIndex].remove(number);
+      } else {
+        if (_mainGenerated[tipIndex].length >= mainNumbersPerTip) {
+          return;
+        }
+        _mainSelected[tipIndex][idx] = true;
+        _mainGenerated[tipIndex].add(number);
+        _mainGenerated[tipIndex].sort();
       }
     });
   }
 
-  Widget _buildNumberCell({
-    required int number,
-    required bool selected,
-    required VoidCallback onTap,
-    required Color activeColor,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: selected ? activeColor : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected ? activeColor.withValues(alpha: 0.8) : Colors.grey.shade400,
-            width: selected ? 2 : 1,
-          ),
+  /// Manuelles Anklicken im Eurozahlenfeld 2-aus-12
+  void _onEuroNumberTap(int number) {
+    if (_isGenerating) return;
+    final int tipIndex = _currentTipIndex;
+    final int idx = number - 1;
+
+    setState(() {
+      final bool selected = _euroSelected[tipIndex][idx];
+
+      if (selected) {
+        _euroSelected[tipIndex][idx] = false;
+        _euroGenerated[tipIndex].remove(number);
+      } else {
+        if (_euroGenerated[tipIndex].length >= euroNumbersPerTip) {
+          return;
+        }
+        _euroSelected[tipIndex][idx] = true;
+        _euroGenerated[tipIndex].add(number);
+        _euroGenerated[tipIndex].sort();
+      }
+    });
+  }
+
+  /// Tipp-Auswahlleiste (Tipp 1–8)
+  Widget _buildTipSelector() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: List<Widget>.generate(tipCount, (int index) {
+        final bool isActive = index == _currentTipIndex;
+        final bool hasNumbers =
+            _mainGenerated[index].isNotEmpty || _euroGenerated[index].isNotEmpty;
+
+        return ChoiceChip(
+          label: Text('Tipp ${index + 1}'),
+          selected: isActive,
+          onSelected: _isGenerating
+              ? null
+              : (_) {
+                  setState(() {
+                    _currentTipIndex = index;
+                  });
+                },
+          avatar: hasNumbers
+              ? const Icon(Icons.check, size: 16)
+              : const Icon(Icons.circle_outlined, size: 14),
+        );
+      }),
+    );
+  }
+
+  /// 5-aus-50 Feld (optisch wie Schein: 5 Reihen x 10 Spalten)
+  Widget _buildMainGrid(Orientation orientation) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.yellow.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.shade700),
+      ),
+      padding: const EdgeInsets.all(8),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 10, // 5 Reihen x 10 Spalten = 50 Zahlen
+          crossAxisSpacing: 2,
+          mainAxisSpacing: 2,
+          childAspectRatio: 1.0,
         ),
-        child: Center(
-          child: Text(
-            number.toString(),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: selected ? Colors.white : Colors.black,
+        itemCount: mainMaxNumber,
+        itemBuilder: (BuildContext context, int index) {
+          final int number = index + 1;
+          final bool isSelected = _mainSelected[_currentTipIndex][index];
+          final bool isHighlight = _currentMainHighlight == number;
+
+          Color bgColor = Colors.yellow.shade100;
+          Color borderColor = Colors.red.shade700;
+          Color textColor = Colors.black;
+          String text = number.toString();
+
+          // Laufendes Kreuz
+          if (isHighlight && !isSelected) {
+            bgColor = Colors.orange;
+            textColor = Colors.white;
+            text = '✗';
+          } else if (isSelected) {
+            bgColor = Colors.red.shade600;
+            textColor = Colors.white;
+            text = '✗';
+          }
+
+          return GestureDetector(
+            onTap: _isGenerating ? null : () => _onMainNumberTap(number),
+            child: Container(
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: borderColor, width: 0.8),
+              ),
+              child: Center(
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildMainGrid() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Hauptzahlen (5 aus 50)',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 260,
-          child: GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 10,
-              crossAxisSpacing: 4,
-              mainAxisSpacing: 4,
-            ),
-            itemCount: _maxMain,
-            itemBuilder: (context, index) {
-              final int number = index + 1;
-              return _buildNumberCell(
-                number: number,
-                selected: _mainSelected[index],
-                onTap: () => _toggleMain(index),
-                activeColor: Colors.blue,
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEuroGrid() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Eurozahlen (2 aus 12)',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 80,
-          child: GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 6,
-              crossAxisSpacing: 4,
-              mainAxisSpacing: 4,
-            ),
-            itemCount: _maxEuro,
-            itemBuilder: (context, index) {
-              final int number = index + 1;
-              return _buildNumberCell(
-                number: number,
-                selected: _euroSelected[index],
-                onTap: () => _toggleEuro(index),
-                activeColor: Colors.orange,
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSummary() {
-    final main = _currentMainNumbers();
-    final euro = _currentEuroNumbers();
-
+  /// Eurozahlen-Feld 2-aus-12 (2 Reihen x 6 Spalten)
+  Widget _buildEuroGrid(Orientation orientation) {
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 12),
+      decoration: BoxDecoration(
+        color: Colors.yellow.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.shade700),
+      ),
+      padding: const EdgeInsets.all(8),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 6,
+          crossAxisSpacing: 2,
+          mainAxisSpacing: 2,
+          childAspectRatio: 1.0,
+        ),
+        itemCount: euroMaxNumber,
+        itemBuilder: (BuildContext context, int index) {
+          final int number = index + 1;
+          final bool isSelected = _euroSelected[_currentTipIndex][index];
+          final bool isHighlight = _currentEuroHighlight == number;
+
+          Color bgColor = Colors.yellow.shade100;
+          Color borderColor = Colors.red.shade700;
+          Color textColor = Colors.black;
+          String text = number.toString();
+
+          if (isHighlight && !isSelected) {
+            bgColor = Colors.orange;
+            textColor = Colors.white;
+            text = '✗';
+          } else if (isSelected) {
+            bgColor = Colors.red.shade600;
+            textColor = Colors.white;
+            text = '✗';
+          }
+
+          return GestureDetector(
+            onTap: _isGenerating ? null : () => _onEuroNumberTap(number),
+            child: Container(
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: borderColor, width: 0.8),
+              ),
+              child: Center(
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Buttons: aktueller Tipp / alle Tipps
+  Widget _buildControls() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed:
+                    _isGenerating ? null : () => _generateSingleTip(_currentTipIndex),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.casino),
+                label: const Text('Tipp generieren'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed:
+                    _isGenerating ? null : () => _clearTip(_currentTipIndex),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.delete),
+                label: const Text('Tipp löschen'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _isGenerating ? null : _generateAllTips,
+                icon: const Icon(Icons.auto_mode),
+                label: const Text('Alle generieren'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _isGenerating ? null : _clearAllTips,
+                icon: const Icon(Icons.delete_sweep),
+                label: const Text('Alle löschen'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Übersicht über alle Tipps unten
+  Widget _buildTipSummary() {
+    return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
+        color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blueGrey.shade300),
+        border: Border.all(color: Colors.grey.shade400),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Dein Tipp',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            main.isEmpty
-                ? 'Hauptzahlen: –'
-                : 'Hauptzahlen: ${main.join(', ')}',
-            style: const TextStyle(fontSize: 14),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            euro.isEmpty
-                ? 'Eurozahlen: –'
-                : 'Eurozahlen: ${euro.join(', ')}',
-            style: const TextStyle(fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _isComplete
-                ? 'Tipp vollständig.'
-                : 'Bitte wähle $_mainCount Hauptzahlen und $_euroCount Eurozahlen.',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: _isComplete ? Colors.green : Colors.red,
+        children: List<Widget>.generate(tipCount, (int index) {
+          final main = _mainGenerated[index];
+          final euro = _euroGenerated[index];
+
+          if (main.isEmpty && euro.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                'Tipp ${index + 1}: –',
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tipp ${index + 1}: ',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Expanded(
+                  child: Wrap(
+                    spacing: 4,
+                    runSpacing: 2,
+                    children: [
+                      ...main.map(
+                        (n) => Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.yellow.shade700,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            n.toString(),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                      ...euro.map(
+                        (n) => Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade600,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'E$n',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        }),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Eurojackpot'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const Text(
-                'Wähle deine Zahlen oder lass sie zufällig generieren.\n'
-                'Offizielles Schema: 5 aus 50 + 2 aus 12.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              _buildMainGrid(),
-              const SizedBox(height: 12),
-              _buildEuroGrid(),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _generateRandom,
-                      icon: const Icon(Icons.auto_mode),
-                      label: const Text('Zufallstipp'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _clearAll,
-                      icon: const Icon(Icons.delete),
-                      label: const Text('Alles löschen'),
-                    ),
-                  ),
-                ],
-              ),
-              _buildSummary(),
-            ],
+    return OrientationBuilder(
+      builder: (BuildContext context, Orientation orientation) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Eurojackpot'),
           ),
-        ),
-      ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildTipSelector(),
+                const SizedBox(height: 12),
+                const Text(
+                  'Tippfeld 5 aus 50',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                _buildMainGrid(orientation),
+                const SizedBox(height: 16),
+                const Text(
+                  'Eurozahlen 2 aus 12',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                _buildEuroGrid(orientation),
+                const SizedBox(height: 16),
+                _buildControls(),
+                const SizedBox(height: 16),
+                _buildTipSummary(),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
