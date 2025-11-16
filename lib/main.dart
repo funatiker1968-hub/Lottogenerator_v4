@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'screens/disclaimer_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/lotto_6aus49_screen.dart';
+import 'screens/eurojackpot_screen.dart';
 
 void main() {
   runApp(const LottoGeneratorApp());
@@ -14,58 +18,30 @@ class LottoGeneratorApp extends StatefulWidget {
 }
 
 class _LottoGeneratorAppState extends State<LottoGeneratorApp> {
-  bool _acceptedDisclaimer = false;
+  bool _accepted = false;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Lottogenerator V4',
+      title: "Lottogenerator",
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.light,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.dark,
-        ),
-      ),
       themeMode: ThemeMode.system,
-      home: _acceptedDisclaimer 
-          ? const PlaceholderScreen() 
-          : DisclaimerScreen(
-              onAccept: () {
-                setState(() {
-                  _acceptedDisclaimer = true;
-                });
-              },
-              onDecline: () {
-                SystemNavigator.pop();
-              },
-            ),
-    );
-  }
-}
-
-class PlaceholderScreen extends StatelessWidget {
-  const PlaceholderScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Home (folgt)"),
-      ),
-      body: const Center(
-        child: Text(
-          "Der HomeScreen wird gleich erstellt...",
-          style: TextStyle(fontSize: 20),
-        ),
-      ),
+      theme: ThemeData.light(),
+      darkTheme: ThemeData.dark(),
+      routes: {
+        "/": (_) => _accepted
+            ? const HomeScreen()
+            : DisclaimerScreen(
+                onAccept: () {
+                  setState(() => _accepted = true);
+                },
+                onDecline: () {
+                  SystemNavigator.pop();
+                },
+              ),
+        "/lotto": (_) => const Lotto6aus49Screen(),
+        "/eurojackpot": (_) => const EurojackpotScreen(),
+      },
     );
   }
 }
