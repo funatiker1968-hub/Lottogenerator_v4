@@ -4,7 +4,13 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 /// Lotto 6aus49 Screen – 12 Tippfelder + Schein-Superzahl
-/// Stand: 16.11.2025
+/// Stand: 17.11.2025
+
+// Lotto-Farben
+const Color _lottoYellow = Color(0xFFFFDD00);
+const Color _lottoRed = Color(0xFFD20000);
+const Color _lottoGrey = Color(0xFFF2F2F2);
+
 class Lotto6aus49Screen extends StatefulWidget {
   const Lotto6aus49Screen({super.key});
 
@@ -130,9 +136,9 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                   },
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isSelected ? Colors.blue : Colors.blue[100],
+                      color: isSelected ? _lottoYellow : Colors.blue[100],
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red[900]!),
+                      border: Border.all(color: _lottoRed),
                     ),
                     child: Center(
                       child: Text(
@@ -140,7 +146,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: isSelected ? Colors.white : Colors.black,
+                          color: isSelected ? Colors.black : Colors.black,
                         ),
                       ),
                     ),
@@ -302,7 +308,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
   //  UI-Bausteine
   // ----------------------------------------------------------
 
-  /// Leiste oben: Schein-Superzahl 0–9 in 1×10 Grid, blau, Gridlinien dunkelrot.
+  /// Leiste oben: Schein-Superzahl 0–9 in 1×10 Grid.
   Widget _buildSuperzahlBar() {
     return GestureDetector(
       onTap: _onSuperzahlTap,
@@ -311,7 +317,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
         decoration: BoxDecoration(
           color: Colors.blue[600],
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.red[900]!, width: 1.4),
+          border: Border.all(color: _lottoRed, width: 1.4),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,9 +348,9 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                     width: 36,
                     margin: const EdgeInsets.only(right: 4),
                     decoration: BoxDecoration(
-                      color: isSelected ? Colors.yellow[300] : Colors.blue[100],
+                      color: isSelected ? _lottoYellow : Colors.blue[100],
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.red[900]!, width: 1.0),
+                      border: Border.all(color: _lottoRed, width: 1.0),
                     ),
                     child: Center(
                       child: Text(
@@ -352,7 +358,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isHighlight ? Colors.red : Colors.black,
+                          color: isHighlight ? _lottoRed : Colors.black,
                         ),
                       ),
                     ),
@@ -379,7 +385,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     );
   }
 
-  /// Einzelnes Tippfeld (postgelb, 7×7 Grid 1–49, Buttons darunter).
+  /// Einzelnes Tippfeld (7×7 Grid 1–49, Buttons darunter).
   Widget _buildTipCard(int tipIndex) {
     final List<bool> selected = _selectedNumbers[tipIndex];
     final List<int> finalNums = _finalNumbers[tipIndex];
@@ -414,7 +420,8 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                 crossAxisCount: 7,
                 crossAxisSpacing: 1.5,
                 mainAxisSpacing: 1.5,
-                childAspectRatio: 1.0,
+                // Boxen minimal kleiner gemacht, damit alle 49 sichtbar sind
+                childAspectRatio: 0.88,
               ),
               itemCount: maxNumber,
               itemBuilder: (context, index) {
@@ -424,23 +431,23 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                 final bool isHighlighted = highlight == number;
 
                 Color bg;
-                Color borderColor = Colors.red[900]!;
+                Color borderColor = _lottoRed;
                 Widget inner;
 
                 if (isHighlighted && !isSelected) {
                   // Laufkreuz über nicht finalen Zahlen
-                  bg = Colors.orange[300]!;
+                  bg = _lottoYellow;
                   inner = const Text(
                     '✗',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Colors.red,
+                      color: _lottoRed,
                     ),
                   );
                 } else if (isSelected && isFinal) {
                   // Finale, getroffene Zahlen
-                  bg = Colors.yellow[800]!;
+                  bg = _lottoYellow;
                   inner = const Text(
                     '✗',
                     style: TextStyle(
@@ -450,7 +457,8 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                     ),
                   );
                 } else {
-                  bg = Colors.yellow[200]!;
+                  // Normale, nicht ausgewählte Zahl
+                  bg = _lottoGrey;
                   inner = Text(
                     number.toString(),
                     style: const TextStyle(
@@ -578,7 +586,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
             const SizedBox(height: 8),
             Expanded(
               child: GridView.count(
-                crossAxisCount: isPortrait ? 2 : 4,
+                crossAxisCount: isPortrait ? 2 : 3, // Querformat jetzt 3 Karten
                 childAspectRatio: isPortrait ? 0.90 : 1.05,
                 children: List.generate(
                   tipCount,
