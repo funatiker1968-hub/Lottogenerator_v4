@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 /// Eurojackpot – offizielles Farbschema & Layout
 /// 5 aus 50 + 2 aus 12
 /// 8 Tippfelder in fester 2x4 Matrix
-/// Animationslauflicht korrigiert (kein extra Durchlauf)
-/// Farbsystem vollständig Eurojackpot-gerecht
+/// Animationslauflicht optimiert
+/// Farbsystem Eurojackpot-gerecht
 
 // === Eurojackpot-Farben ===
 const Color _ejGold = Color(0xFFC6A667);        // Highlight / Final
@@ -14,6 +14,7 @@ const Color _ejBronze = Color(0xFFA57C2B);      // Border
 const Color _ejBeige = Color(0xFFEFE7D5);       // Normal Feld
 const Color _ejLightBg = Color(0xFFF3E6C7);     // Tippkarten-Hintergrund
 const Color _ejEuroArea = Color(0xFFF6F0E5);    // Eurozahlen-Bereich
+const Color _ejChipGreen = Color(0xFF2E7D32);   // Ergebnis-Chips
 
 class EurojackpotScreen extends StatefulWidget {
   const EurojackpotScreen({super.key});
@@ -38,7 +39,7 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
   final List<List<bool>> _selectedEuro =
       List.generate(tipCount, (_) => List.filled(maxEuroNumber, false));
 
-  // Gemerkte generierte Zahlen
+  // Gemerkte Tippzahlen (für Ergebnis-Chips)
   final List<List<int>> _generatedMain =
       List.generate(tipCount, (_) => <int>[]);
   final List<List<int>> _generatedEuro =
@@ -53,7 +54,7 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
   int? _highlightEuroNumber;
 
   // ============================================================
-  //   Tipp generieren (mit korrigiertem Animationslauflicht)
+  //   Tipp generieren (Favoriten + Animation + Ergebnis)
   // ============================================================
 
   Future<void> _generateTip(int tipIndex) async {
@@ -96,9 +97,8 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
 
     setState(() {
       _isAnimating = true;
-      _generatedMain[tipIndex] = finalMain;
-      _generatedEuro[tipIndex] = finalEuro;
 
+      // Nur Favoriten zunächst gesetzt lassen, generierte kommen in der Animation dazu
       for (int i = 0; i < maxMainNumber; i++) {
         _selectedMain[tipIndex][i] = currentMain.contains(i + 1);
       }
@@ -108,9 +108,7 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
     });
 
     // ==== Hauptzahlen-Lauflicht ====
-    bool secondPassStopReached = false;
-
-    // Runde 1 (vollständig)
+    // Runde 1: kompletter Durchlauf 1..50
     for (int n = 1; n <= maxMainNumber; n++) {
       if (!mounted) return;
       setState(() {
@@ -123,38 +121,23 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
       await Future.delayed(const Duration(milliseconds: 28));
     }
 
-    // Runde 2 (abbricht auf letzte finale Zahl)
-    for (int n = 1; n <= maxMainNumber; n++) {
+    // Runde 2: nur noch über die finalen Zahlen, zur Betonung
+    for (final n in finalMain) {
       if (!mounted) return;
       setState(() {
         _highlightMainTip = tipIndex;
         _highlightMainNumber = n;
-        if (finalMain.contains(n)) {
-          _selectedMain[tipIndex][n - 1] = true;
-        }
       });
-
-      if (finalMain.contains(n)) {
-        if (n == finalMain.last) {
-          secondPassStopReached = true;
-        }
-      }
-
-      await Future.delayed(const Duration(milliseconds: 28));
-
-      if (secondPassStopReached) break;
+      await Future.delayed(const Duration(milliseconds: 60));
     }
 
-    // Highlight entfernen
     setState(() {
       _highlightMainTip = null;
       _highlightMainNumber = null;
     });
 
     // ==== Eurozahlen-Lauflicht ====
-    secondPassStopReached = false;
-
-    // Runde 1
+    // Runde 1: kompletter Durchlauf 1..12
     for (int n = 1; n <= maxEuroNumber; n++) {
       if (!mounted) return;
       setState(() {
@@ -167,31 +150,28 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
       await Future.delayed(const Duration(milliseconds: 70));
     }
 
-    // Runde 2 (Stop auf letzte Eurofinalzahl)
-    for (int n = 1; n <= maxEuroNumber; n++) {
+    // Runde 2: nur über die finalen Eurozahlen
+    for (final n in finalEuro) {
       if (!mounted) return;
       setState(() {
         _highlightEuroTip = tipIndex;
         _highlightEuroNumber = n;
-        if (finalEuro.contains(n)) {
-          _selectedEuro[tipIndex][n - 1] = true;
-        }
       });
-
-      if (finalEuro.contains(n)) {
-        if (n == finalEuro.last) {
-          secondPassStopReached = true;
-        }
-      }
-
-      await Future.delayed(const Duration(milliseconds: 70));
-
-      if (secondPassStopReached) break;
+      await Future.delayed(const Duration(milliseconds: 90));
     }
 
     setState(() {
       _highlightEuroTip = null;
       _highlightEuroNumber = null;
+
+      // Jetzt erst finale Kombi für Ergebnis-Chips übernehmen
+      _generatedMain[tipIndex]
+        ..clear()
+        ..addAll(finalMain);
+      _generatedEuro[tipIndex]
+        ..clear()
+        ..addAll(finalEuro);
+
       _isAnimating = false;
     });
   }
@@ -232,10 +212,7 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
   //   UI: Gitter Hauptzahlen (5×10)
   // ============================================================
 
-  Widget _buildMainGrid(int tipIndex, bool isPortrait) {
-    final double baseH = 26;  
-    final double scaled = isPortrait ? baseH * 0.80 : baseH * 0.70;
-
+  Widget _buildMainGrid(int tipIndex) {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -243,42 +220,47 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _ejBronze, width: 1),
       ),
-      child: SizedBox(
-        height: scaled * 10, 
-        child: GridView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: maxMainNumber,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 10, crossAxisSpacing: 2, mainAxisSpacing: 2),
-          itemBuilder: (context, index) {
-            final int num = index + 1;
-            final bool sel = _selectedMain[tipIndex][index];
-            final bool hi = (_highlightMainTip == tipIndex &&
-                _highlightMainNumber == num);
-
-            Color bg = sel ? _ejGold : _ejBeige;
-            if (hi) bg = _ejGold;
-
-            return GestureDetector(
-              onTap: () => _toggleMain(tipIndex, index),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: bg,
-                  borderRadius: BorderRadius.circular(3),
-                  border: Border.all(color: _ejBronze, width: 0.8),
-                ),
-                child: Center(
-                    child: Text(
-                  "$num",
-                  style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black),
-                )),
-              ),
-            );
-          },
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: maxMainNumber,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 10,
+          crossAxisSpacing: 2,
+          mainAxisSpacing: 2,
         ),
+        itemBuilder: (context, index) {
+          final int num = index + 1;
+          final bool sel = _selectedMain[tipIndex][index];
+          final bool hi = (_highlightMainTip == tipIndex &&
+              _highlightMainNumber == num);
+
+          Color bg = sel ? _ejGold : _ejBeige;
+          if (hi) {
+            bg = _ejGold;
+          }
+
+          return GestureDetector(
+            onTap: () => _toggleMain(tipIndex, index),
+            child: Container(
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: _ejBronze, width: 0.8),
+              ),
+              child: Center(
+                child: Text(
+                  '$num',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -287,10 +269,7 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
   //   UI: Eurozahlen-Gitter (2×6)
   // ============================================================
 
-  Widget _buildEuroGrid(int tipIndex, bool isPortrait) {
-    final double baseH = 26;
-    final double scaled = isPortrait ? baseH * 0.80 : baseH * 0.70;
-
+  Widget _buildEuroGrid(int tipIndex) {
     return Container(
       margin: const EdgeInsets.only(top: 6),
       padding: const EdgeInsets.all(4),
@@ -299,42 +278,47 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _ejBronze, width: 1),
       ),
-      child: SizedBox(
-        height: scaled * 2.4,
-        child: GridView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: maxEuroNumber,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 6, crossAxisSpacing: 2, mainAxisSpacing: 2),
-          itemBuilder: (context, index) {
-            final int num = index + 1;
-            final bool sel = _selectedEuro[tipIndex][index];
-            final bool hi = (_highlightEuroTip == tipIndex &&
-                _highlightEuroNumber == num);
-
-            Color bg = sel ? _ejGold : _ejBeige;
-            if (hi) bg = _ejGold;
-
-            return GestureDetector(
-              onTap: () => _toggleEuro(tipIndex, index),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: bg,
-                  borderRadius: BorderRadius.circular(3),
-                  border: Border.all(color: _ejBronze, width: 0.8),
-                ),
-                child: Center(
-                    child: Text(
-                  "$num",
-                  style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black),
-                )),
-              ),
-            );
-          },
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: maxEuroNumber,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 6,
+          crossAxisSpacing: 2,
+          mainAxisSpacing: 2,
         ),
+        itemBuilder: (context, index) {
+          final int num = index + 1;
+          final bool sel = _selectedEuro[tipIndex][index];
+          final bool hi = (_highlightEuroTip == tipIndex &&
+              _highlightEuroNumber == num);
+
+          Color bg = sel ? _ejGold : _ejBeige;
+          if (hi) {
+            bg = _ejGold;
+          }
+
+          return GestureDetector(
+            onTap: () => _toggleEuro(tipIndex, index),
+            child: Container(
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: _ejBronze, width: 0.8),
+              ),
+              child: Center(
+                child: Text(
+                  '$num',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -355,10 +339,13 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
           _selectedMain[t][i] = true;
         }
       }
-      _generatedMain[t] = [
-        for (int k = 0; k < maxMainNumber; k++)
-          if (_selectedMain[t][k]) k + 1
-      ];
+      // Wenn keine Animation läuft, aktuelle Auswahl als "Momentzustand" in Chips zeigen
+      if (!_isAnimating) {
+        _generatedMain[t] = [
+          for (int k = 0; k < maxMainNumber; k++)
+            if (_selectedMain[t][k]) k + 1
+        ];
+      }
     });
   }
 
@@ -377,11 +364,93 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
           _selectedEuro[t][i] = true;
         }
       }
-      _generatedEuro[t] = [
-        for (int k = 0; k < maxEuroNumber; k++)
-          if (_selectedEuro[t][k]) k + 1
-      ];
+      if (!_isAnimating) {
+        _generatedEuro[t] = [
+          for (int k = 0; k < maxEuroNumber; k++)
+            if (_selectedEuro[t][k]) k + 1
+        ];
+      }
     });
+  }
+
+  // ============================================================
+  //   Ergebnis-Chips
+  // ============================================================
+
+  Widget _buildResultChips(int tipIndex) {
+    // Während Animation keine Chips anzeigen (Spannung)
+    if (_isAnimating) {
+      return const SizedBox.shrink();
+    }
+
+    final List<int> main = _generatedMain[tipIndex];
+    final List<int> euro = _generatedEuro[tipIndex];
+
+    if (main.isEmpty && euro.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (main.isNotEmpty)
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: main
+                  .map(
+                    (n) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _ejChipGreen,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        n.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          if (euro.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: euro
+                    .map(
+                      (n) => Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _ejChipGreen,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          n.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   // ============================================================
@@ -389,6 +458,11 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
   // ============================================================
 
   Widget _buildTip(int tip, bool isPortrait) {
+    final bool hasAnySelection =
+        _generatedMain[tip].isNotEmpty || _generatedEuro[tip].isNotEmpty;
+    final bool isTipAnimating =
+        _isAnimating && (_highlightMainTip == tip || _highlightEuroTip == tip);
+
     return Container(
       margin: const EdgeInsets.all(6),
       padding: const EdgeInsets.all(8),
@@ -400,50 +474,62 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Tipp ${tip + 1}",
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black)),
-          const SizedBox(height: 4),
-          _buildMainGrid(tip, isPortrait),
-          const SizedBox(height: 6),
-          const Text("Eurozahlen",
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black)),
-          _buildEuroGrid(tip, isPortrait),
-          const SizedBox(height: 6),
+          // Kopfzeile mit Tipp-Label + Toggle-Button
           Row(
             children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _isAnimating ? null : () => _generateTip(tip),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _ejGold,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-                  child: const Text("GENERIEREN",
-                      style: TextStyle(fontSize: 11)),
+              Text(
+                'Tipp ${tip + 1}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
                 ),
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _isAnimating ? null : () => _clearTip(tip),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _ejBronze,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+              const Spacer(),
+              ElevatedButton(
+                onPressed: _isAnimating
+                    ? null
+                    : hasAnySelection
+                        ? () => _clearTip(tip)
+                        : () => _generateTip(tip),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isAnimating
+                      ? Colors.grey[500]
+                      : hasAnySelection
+                          ? Colors.red[700]
+                          : Colors.green[700],
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: const Size(0, 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  isTipAnimating
+                      ? 'Läuft...'
+                      : hasAnySelection
+                          ? 'Löschen'
+                          : 'Generieren',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.white,
                   ),
-                  child:
-                      const Text("LÖSCHEN", style: TextStyle(fontSize: 11)),
                 ),
               ),
             ],
-          )
+          ),
+          const SizedBox(height: 4),
+          _buildMainGrid(tip),
+          const SizedBox(height: 6),
+          const Text(
+            'Eurozahlen',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          _buildEuroGrid(tip),
+          _buildResultChips(tip),
         ],
       ),
     );
@@ -460,55 +546,63 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Eurojackpot"),
+        title: const Text('Eurojackpot'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          children: [
-            const Text(
-              "Eurojackpot – 8 Tippfelder (5 aus 50 + 2 aus 12)",
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black),
-              textAlign: TextAlign.center,
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  const Text(
+                    'Eurojackpot – 8 Tippfelder (5 aus 50 + 2 aus 12)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  // Feste 2x4-Matrix
+                  Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: _buildTip(0, isPortrait)),
+                          Expanded(child: _buildTip(1, isPortrait)),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Expanded(child: _buildTip(2, isPortrait)),
+                          Expanded(child: _buildTip(3, isPortrait)),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Expanded(child: _buildTip(4, isPortrait)),
+                          Expanded(child: _buildTip(5, isPortrait)),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Expanded(child: _buildTip(6, isPortrait)),
+                          Expanded(child: _buildTip(7, isPortrait)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-
-            // Feste 2x4-Matrix
-            Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: _buildTip(0, isPortrait)),
-                    Expanded(child: _buildTip(1, isPortrait)),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Expanded(child: _buildTip(2, isPortrait)),
-                    Expanded(child: _buildTip(3, isPortrait)),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Expanded(child: _buildTip(4, isPortrait)),
-                    Expanded(child: _buildTip(5, isPortrait)),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Expanded(child: _buildTip(6, isPortrait)),
-                    Expanded(child: _buildTip(7, isPortrait)),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Buttons unten – wie Lotto
-            Row(
+          ),
+          // Buttons unten – fixiert
+          Padding(
+            padding:
+                const EdgeInsets.only(left: 8, right: 8, top: 4, bottom: 8),
+            child: Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
@@ -518,9 +612,13 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text("ALLE GENERIEREN",
-                        style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'ALLE GENERIEREN',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -532,18 +630,20 @@ class _EurojackpotScreenState extends State<EurojackpotScreen> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text("ALLES LÖSCHEN",
-                        style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'ALLES LÖSCHEN',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
-
