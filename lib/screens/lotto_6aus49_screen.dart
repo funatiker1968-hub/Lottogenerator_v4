@@ -2,15 +2,6 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 
-/// Lotto 6aus49 – Version mit:
-/// - Favoriten (manuell)
-/// - Generierten Zahlen
-/// - X-Darstellung (schwarz = Favorit, rot = generiert)
-/// - Zahlentext unter jedem Tipp (schwarz/rot)
-/// - Toggle-Button pro Tipp oben rechts (GENERIEREN / LÖSCHEN / LÄUFT...)
-/// - Master-Button unten (ALLE GENERIEREN / ALLES LÖSCHEN / GENERIIERE ALLES...)
-/// - Fixes: kein Überlappen der Tippkarten, korrekte Toggle-Logik bei Favoriten
-
 const Color _lottoYellow = Color(0xFFFFDD00);
 const Color _lottoRed = Color(0xFFD20000);
 const Color _lottoGrey = Color(0xFFF2F2F2);
@@ -29,32 +20,25 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
 
   final Random _random = Random();
 
-  /// Favoriten (manuell gesetzte Zahlen)
   final List<List<bool>> _favorites =
       List.generate(tipCount, (_) => List.filled(maxNumber, false));
 
-  /// Generierte Zahlen (werden bei neuem Generieren überschrieben)
   final List<List<bool>> _generated =
       List.generate(tipCount, (_) => List.filled(maxNumber, false));
 
-  /// Aktuelle Highlight-Zahl im Tipp (Lauflicht)
   final List<int?> _currentHighlight =
       List<int?>.filled(tipCount, null);
 
-  /// Läuft gerade eine Animation in diesem Tipp?
   final List<bool> _isAnimatingTip =
       List<bool>.filled(tipCount, false);
 
-  /// Timer je Tipp für das Lauflicht
   final List<Timer?> _tipTimers =
       List<Timer?>.filled(tipCount, null);
 
-  /// Superzahl (Schein)
   int _scheinSuperzahl = 0;
   bool _superzahlGenerated = false;
   bool _isSuperzahlAnimating = false;
 
-  /// Wird gerade „Alle generieren“ ausgeführt?
   bool _isGeneratingAll = false;
 
   @override
@@ -65,25 +49,18 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     super.dispose();
   }
 
-  // ----------------------------------------------------------
-  // Superzahl
-  // ----------------------------------------------------------
-
   Future<void> _runSuperzahlAnimation() async {
     if (_isSuperzahlAnimating) return;
-
     setState(() {
       _isSuperzahlAnimating = true;
       _superzahlGenerated = false;
     });
 
     final int finalNumber = _random.nextInt(10);
-
     const int cycles = 2;
     const int fastDelay = 70;
     const int slowDelay = 140;
 
-    // schnelle Runden
     for (int cycle = 0; cycle < cycles; cycle++) {
       for (int i = 0; i < 10; i++) {
         if (!mounted) return;
@@ -94,7 +71,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
       }
     }
 
-    // langsam bis final
     for (int i = 0; i <= finalNumber; i++) {
       if (!mounted) return;
       setState(() {
@@ -110,6 +86,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
       _isSuperzahlAnimating = false;
     });
   }
+
 
   void _onSuperzahlTap() {
     if (_isSuperzahlAnimating) return;
@@ -246,10 +223,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     );
   }
 
-  // ----------------------------------------------------------
-  // Tipp-Status-Helfer
-  // ----------------------------------------------------------
-
   bool _tipHasFavorites(int tip) {
     for (int i = 0; i < maxNumber; i++) {
       if (_favorites[tip][i]) return true;
@@ -270,10 +243,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     }
     return false;
   }
-
-  // ----------------------------------------------------------
-  // Tipp löschen
-  // ----------------------------------------------------------
 
   void _clearTip(int tip) {
     _tipTimers[tip]?.cancel();
@@ -299,15 +268,10 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     });
   }
 
-  // ----------------------------------------------------------
-  // Tipp generieren (mit Favoriten)
-  // ----------------------------------------------------------
-
   Future<void> _runTipAnimation(int tip) async {
     _tipTimers[tip]?.cancel();
     _tipTimers[tip] = null;
 
-    // Favoriten einsammeln
     final List<int> favs = [];
     for (int i = 0; i < maxNumber; i++) {
       if (_favorites[tip][i]) favs.add(i + 1);
@@ -323,7 +287,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     pool.shuffle(_random);
     final List<int> newGen = pool.take(need).toList();
 
-    // generierte zurücksetzen, Favoriten bleiben
     setState(() {
       for (int i = 0; i < maxNumber; i++) {
         _generated[tip][i] = false;
@@ -370,6 +333,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     );
   }
 
+
   Future<void> _generateTip(int tip) async {
     if (_isAnimatingTip[tip] || _isGeneratingAll) return;
 
@@ -411,10 +375,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     });
   }
 
-  // ----------------------------------------------------------
-  // Manuelles Togglen einer Zahl
-  // ----------------------------------------------------------
-
   void _toggleNumber(int tip, int index) {
     if (_isAnimatingTip[tip] || _isGeneratingAll) return;
 
@@ -423,7 +383,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
       final bool isGen = _generated[tip][index];
 
       if (!isFav && !isGen) {
-        // Neue Zahl als Favorit setzen, aber max 6 insgesamt
         int count = 0;
         for (int i = 0; i < maxNumber; i++) {
           if (_favorites[tip][i] || _generated[tip][i]) {
@@ -433,22 +392,15 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
         if (count >= numbersPerTip) return;
         _favorites[tip][index] = true;
       } else if (isFav && !isGen) {
-        // Favorit abwählen
         _favorites[tip][index] = false;
       } else if (!isFav && isGen) {
-        // Generierte Zahl abwählen
         _generated[tip][index] = false;
       } else {
-        // Falls mal beides true wäre
         _favorites[tip][index] = false;
         _generated[tip][index] = false;
       }
     });
   }
-
-  // ----------------------------------------------------------
-  // Tippfeld UI
-  // ----------------------------------------------------------
 
   Widget _buildTipCard(int tip) {
     final bool isAnimating = _isAnimatingTip[tip] || _isGeneratingAll;
@@ -457,7 +409,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     final bool hasFav = _tipHasFavorites(tip);
     final bool hasGen = _tipHasGenerated(tip);
 
-    // Liste der finalen Zahlen (für Anzeige unten)
     final List<int> finalNums = [];
     for (int i = 0; i < maxNumber; i++) {
       if (_favorites[tip][i] || _generated[tip][i]) {
@@ -594,7 +545,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
 
           const SizedBox(height: 4),
 
-          // Finale Zahlen UNTER dem Tippfeld (nur wenn nicht animiert)
+          // Finale Zahlen unter dem Tippfeld
           if (!isAnimating && finalNums.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
@@ -631,10 +582,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
       ),
     );
   }
-
-  // ----------------------------------------------------------
-  // Master-Button unten
-  // ----------------------------------------------------------
 
   Widget _buildBottomMasterButton() {
     final bool anyContent = _anyTipHasContent();
@@ -677,10 +624,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     );
   }
 
-  // ----------------------------------------------------------
-  // Build
-  // ----------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
     final bool isPortrait =
@@ -699,16 +642,13 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
             Expanded(
               child: GridView.builder(
                 itemCount: tipCount,
-                gridDelegate:
-                    SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: isPortrait ? 2 : 3,
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
-                  // Fester Höhenwert pro Karte -> kein Überlappen mehr
-                  mainAxisExtent: isPortrait ? 290 : 260,
+                  childAspectRatio: isPortrait ? 0.70 : 1.25,
                 ),
-                itemBuilder: (context, index) =>
-                    _buildTipCard(index),
+                itemBuilder: (context, index) => _buildTipCard(index),
               ),
             ),
             const SizedBox(height: 4),
@@ -719,3 +659,4 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     );
   }
 }
+
