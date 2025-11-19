@@ -95,27 +95,27 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen>
 
   void _playSuperzahlSpinStart() {
     if (!_soundEnabled) return;
-    // TODO: Hier später Sound für Start der Superzahl-Kugel abspielen
+    LGSounds.playSpinStart();
   }
 
   void _playSuperzahlSpinEnd() {
     if (!_soundEnabled) return;
-    // TODO: Hier später Sound für Ende der Superzahl-Kugel abspielen
+    LGSounds.playSpinEnd();
   }
 
   void _playSnakeStartSound() {
     if (!_soundEnabled) return;
-    // TODO: Sound beim Snake-Start
+    LGSounds.playSpinStart();
   }
 
   void _playSnakeEatSound() {
     if (!_soundEnabled) return;
-    // TODO: Sound wenn Snake eine Zahl „frisst“
+    LGSounds.playSnakeEat();
   }
 
   void _playSnakeEndSound() {
     if (!_soundEnabled) return;
-    // TODO: Sound beim Snake-Ende
+    LGSounds.playSnakeEnd();
   }
 
   // ----------------------------------------------------------
