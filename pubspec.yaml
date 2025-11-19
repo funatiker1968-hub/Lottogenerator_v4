@@ -1,5 +1,5 @@
 name: lottogenerator_v4
-description: Ein moderner Lottozahlen-Generator für Lotto 6aus49 & Eurojackpot.
+description: Lotto Generator App (6aus49 & Eurojackpot) mit Animationen & Sound
 publish_to: "none"
 
 version: 1.0.0+1
@@ -10,20 +10,23 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
   cupertino_icons: ^1.0.6
+
+  # Sound Player
+  audioplayers: ^5.2.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  flutter_launcher_icons: ^0.13.1
 
 flutter:
-  uses-material-design: true
-  assets:
-    - assets/icon.png
 
-flutter_launcher_icons:
-  android: true
-  ios: false
-  image_path: "assets/icon.png"
+  uses-material-design: true
+
+  assets:
+    - assets/sounds/spin.wav
+    - assets/sounds/slow.wav
+    - assets/sounds/eat.wav
+    - assets/sounds/exit.wav
