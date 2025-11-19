@@ -2,21 +2,18 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 
-/// Lotto 6aus49 – FINAL VERSION
-/// - Favoriten gelb + schwarzes X
-/// - Generierte Zahlen hellblau + rotes X
-/// - Normale Zahlen hellgrau + schwarze Ziffer
-/// - Zahlenliste unter jedem Tipp (schwarz/rot)
-/// - Buttons oben rechts (GENERIEREN / LÖSCHEN / LÄUFT...)
+/// Lotto 6aus49 – Favoriten + generierte Zahlen
+/// - 12 Tippfelder, 7x7-Grid (1–49)
+/// - Favoriten: schwarzes X
+/// - Generierte: rotes X auf hellblauem Feld
+/// - Zahlenzeile unter jedem Tipp (Favoriten schwarz, generierte rot)
+/// - Toggle-Button pro Tipp (GENERIEREN / LÖSCHEN / LÄUFT...)
 /// - Master-Button unten (ALLE GENERIEREN / ALLES LÖSCHEN / GENERIERE ALLES...)
-/// - Automatische Kartenhöhe (kein Überlappen)
 
 const Color _lottoYellow = Color(0xFFFFDD00);
 const Color _lottoRed = Color(0xFFD20000);
 const Color _lottoGrey = Color(0xFFF2F2F2);
-
-/// Hintergrundfarbe für generierte Zahlen
-const Color _generatedBlue = Color(0xFFBEE6FF);
+const Color _lottoBlueLight = Color(0xFFBBDEFB); // hellblau für generierte Felder
 
 class Lotto6aus49Screen extends StatefulWidget {
   const Lotto6aus49Screen({super.key});
@@ -40,7 +37,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
   final List<List<bool>> _generated =
       List.generate(tipCount, (_) => List.filled(maxNumber, false));
 
-  /// Aktuelle Highlight-Zahl im Tipp (Lauflicht)
+  /// Aktuelle Highlight-Zahl pro Tipp (Lauflicht)
   final List<int?> _currentHighlight =
       List<int?>.filled(tipCount, null);
 
@@ -86,7 +83,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     const int fastDelay = 70;
     const int slowDelay = 140;
 
-    // schnelle Runden
+    // 2 schnelle Runden 0–9
     for (int cycle = 0; cycle < cycles; cycle++) {
       for (int i = 0; i < 10; i++) {
         if (!mounted) return;
@@ -97,7 +94,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
       }
     }
 
-    // letzte langsamere Runde
+    // Langsam bis zur finalen Zahl
     for (int i = 0; i <= finalNumber; i++) {
       if (!mounted) return;
       setState(() {
@@ -119,59 +116,57 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
 
     showDialog<void>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Superzahl wählen'),
-          content: SizedBox(
-            height: 180,
-            child: GridView.builder(
-              shrinkWrap: true,
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 5,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: 10,
-              itemBuilder: (context, index) {
-                final bool isSelected = index == _scheinSuperzahl;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _scheinSuperzahl = index;
-                      _superzahlGenerated = true;
-                    });
-                    Navigator.of(context).pop();
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected ? _lottoYellow : Colors.blue[100],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: _lottoRed),
-                    ),
-                    child: Center(
-                      child: Text(
-                        index.toString(),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
+      builder: (_) => AlertDialog(
+        title: const Text('Superzahl wählen'),
+        content: SizedBox(
+          height: 180,
+          child: GridView.builder(
+            shrinkWrap: true,
+            gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 5,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: 10,
+            itemBuilder: (context, index) {
+              final bool isSelected = index == _scheinSuperzahl;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _scheinSuperzahl = index;
+                    _superzahlGenerated = true;
+                  });
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected ? _lottoYellow : Colors.blue[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _lottoRed),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$index',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Schließen'),
-            ),
-          ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Schließen'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -208,6 +203,8 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                 itemCount: 10,
                 itemBuilder: (context, index) {
                   final bool isSelected = index == _scheinSuperzahl;
+                  final bool isHighlight = _isSuperzahlAnimating &&
+                      index == _scheinSuperzahl;
                   return Container(
                     width: 36,
                     margin: const EdgeInsets.only(right: 4),
@@ -219,10 +216,10 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                     child: Center(
                       child: Text(
                         index.toString(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                          color: isHighlight ? _lottoRed : Colors.black,
                         ),
                       ),
                     ),
@@ -250,7 +247,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
   }
 
   // ----------------------------------------------------------
-  // Tipp-Status
+  // Tipp-Status-Helfer
   // ----------------------------------------------------------
 
   bool _tipHasFavorites(int tip) {
@@ -275,7 +272,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
   }
 
   // ----------------------------------------------------------
-  // Tipp löschen
+  // Löschen
   // ----------------------------------------------------------
 
   void _clearTip(int tip) {
@@ -326,6 +323,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     pool.shuffle(_random);
     final List<int> newGen = pool.take(need).toList();
 
+    // generierte zurücksetzen, Favoriten bleiben
     setState(() {
       for (int i = 0; i < maxNumber; i++) {
         _generated[tip][i] = false;
@@ -424,7 +422,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
       final bool isGen = _generated[tip][index];
 
       if (!isFav && !isGen) {
-        // neue Favoritenzahl, aber max. 6 insgesamt
+        // Neue Zahl als Favorit setzen (max 6 insgesamt)
         int count = 0;
         for (int i = 0; i < maxNumber; i++) {
           if (_favorites[tip][i] || _generated[tip][i]) {
@@ -445,7 +443,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
   }
 
   // ----------------------------------------------------------
-  // Tippfeld UI
+  // Tippfeld-UI
   // ----------------------------------------------------------
 
   Widget _buildTipCard(int tip) {
@@ -454,7 +452,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
 
     final bool hasGen = _tipHasGenerated(tip);
 
-    // finale Zahlenliste für Anzeige unten
+    // Finale Zahlen für Anzeige unten
     final List<int> finalNums = [];
     for (int i = 0; i < maxNumber; i++) {
       if (_favorites[tip][i] || _generated[tip][i]) {
@@ -467,14 +465,14 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
       margin: const EdgeInsets.all(6),
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: Colors.yellow[600],
+        color: _lottoYellow,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.orange[800]!, width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Kopfzeile mit Tipp-Label + Toggle-Button
+          // Kopfzeile
           Row(
             children: [
               Text(
@@ -482,7 +480,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
-                  color: Colors.black,
                 ),
               ),
               const Spacer(),
@@ -522,7 +519,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
 
           const SizedBox(height: 4),
 
-          // Zahlengitter 1–49
+          // 7x7-Grid 1–49
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -545,7 +542,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
               Widget inner;
 
               if (isHi && !isFinal) {
-                // laufendes Kreuz auf noch nicht finalen Feldern
+                // Laufkreuz
                 bg = _lottoYellow;
                 inner = const Text(
                   '✗',
@@ -556,8 +553,12 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                   ),
                 );
               } else if (isFinal) {
-                // finale Zahlen
-                bg = isFav ? _lottoYellow : _generatedBlue;
+                // Finale Zahlen
+                if (isGen && !isFav) {
+                  bg = _lottoBlueLight; // generiert: hellblau
+                } else {
+                  bg = _lottoGrey; // Favorit: grau (X schwarz)
+                }
                 inner = Text(
                   '✗',
                   style: TextStyle(
@@ -567,7 +568,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                   ),
                 );
               } else {
-                // normale Zahl
+                // Normal
                 bg = _lottoGrey;
                 inner = Text(
                   number.toString(),
@@ -595,10 +596,10 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
 
           const SizedBox(height: 4),
 
-          // Finale Zahlenliste unten (nur wenn nicht animiert)
+          // Zahlenzeile unten (nur wenn nicht animiert)
           if (!isAnimating && finalNums.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: 2),
               child: Wrap(
                 spacing: 4,
                 runSpacing: 2,
@@ -679,6 +680,53 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
   }
 
   // ----------------------------------------------------------
+  // Tipp-Matrix (2x6 / 3x4) mit automatischer Höhe
+  // ----------------------------------------------------------
+
+  Widget _buildTipsMatrix(bool isPortrait) {
+    // Indizes 0–11 in Reihen aufteilen
+    final List<Widget> rows = [];
+
+    if (isPortrait) {
+      // 6 Reihen à 2 Tipps
+      for (int row = 0; row < 6; row++) {
+        final int left = row * 2;
+        final int right = left + 1;
+        rows.add(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _buildTipCard(left)),
+              if (right < tipCount) Expanded(child: _buildTipCard(right)),
+            ],
+          ),
+        );
+      }
+    } else {
+      // 4 Reihen à 3 Tipps
+      for (int row = 0; row < 4; row++) {
+        final int a = row * 3;
+        final int b = a + 1;
+        final int c = a + 2;
+        rows.add(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _buildTipCard(a)),
+              if (b < tipCount) Expanded(child: _buildTipCard(b)),
+              if (c < tipCount) Expanded(child: _buildTipCard(c)),
+            ],
+          ),
+        );
+      }
+    }
+
+    return Column(
+      children: rows,
+    );
+  }
+
+  // ----------------------------------------------------------
   // Build
   // ----------------------------------------------------------
 
@@ -698,17 +746,8 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
             _buildSuperzahlBar(),
             const SizedBox(height: 8),
             Expanded(
-              child: GridView.builder(
-                itemCount: tipCount,
-                gridDelegate:
-                    SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: isPortrait ? 2 : 3,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  // feste Höhe pro Karte, damit nichts überlappt
-                  mainAxisExtent: isPortrait ? 300 : 260,
-                ),
-                itemBuilder: (context, index) => _buildTipCard(index),
+              child: SingleChildScrollView(
+                child: _buildTipsMatrix(isPortrait),
               ),
             ),
             const SizedBox(height: 4),
@@ -719,4 +758,3 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     );
   }
 }
-
