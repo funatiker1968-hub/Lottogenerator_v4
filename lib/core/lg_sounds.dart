@@ -1,24 +1,39 @@
 import 'package:audioplayers/audioplayers.dart';
 
-/// Globale Soundklasse für Lotto-Generator
+/// Zentrale Soundklasse für Lotto6aus49
+/// Die Datei wird automatisch geladen, wenn sie verwendet wird.
+/// Alle Methoden sind statisch nutzbar.
+
 class LGSounds {
   static final AudioPlayer _player = AudioPlayer();
 
-  static Future<void> play(String file) async {
-    try {
-      await _player.stop();
-      await _player.play(
-        AssetSource('sounds/$file'),
-        volume: 1.0,
-      );
-    } catch (e) {
-      // keine Errors anzeigen
-    }
+  /// Superzahl – Start spin sound
+  static Future<void> playSpin() async {
+    await _play('assets/sounds/spin.wav');
   }
 
-  static Future<void> spinStart() async => play('spin.wav');
-  static Future<void> spinEnd() async => play('slow.wav');
-  static Future<void> snakeStart() async => play('spin.wav');
-  static Future<void> snakeEat() async => play('eat.wav');
-  static Future<void> snakeEnd() async => play('exit.wav');
+  /// Superzahl – slowdown / Endphase
+  static Future<void> playSlow() async {
+    await _play('assets/sounds/slow.wav');
+  }
+
+  /// Snake: frisst neue Zahl
+  static Future<void> playEat() async {
+    await _play('assets/sounds/eat.wav');
+  }
+
+  /// Snake-Ende
+  static Future<void> playExit() async {
+    await _play('assets/sounds/exit.wav');
+  }
+
+  /// interner Loader
+  static Future<void> _play(String asset) async {
+    try {
+      await _player.stop();
+      await _player.play(AssetSource(asset.replaceFirst('assets/', '')));
+    } catch (e) {
+      // Keine Crashes – einfach ignorieren
+    }
+  }
 }
