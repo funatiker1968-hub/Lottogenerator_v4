@@ -228,7 +228,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen>
                   },
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isSelected ? _lottoYellow : Colors.blue[100],
+                      color: isSelected ? _lottoYellow : Colors.blue.shade100,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: _lottoRed),
                     ),
@@ -362,7 +362,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen>
                             isSelected && _isSuperzahlBlinkOn;
                         final Color bgColor = blink
                             ? Colors.white
-                            : (isSelected ? _lottoYellow : Colors.blue[100]);
+                            : (isSelected ? _lottoYellow : Colors.blue.shade100);
                         final Color borderColor =
                             blink ? _lottoRed : _lottoRed;
                         return Container(
