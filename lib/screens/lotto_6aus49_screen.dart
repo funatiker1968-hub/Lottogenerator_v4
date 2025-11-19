@@ -2,9 +2,21 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+/// Lotto 6aus49 – FINAL VERSION
+/// - Favoriten gelb + schwarzes X
+/// - Generierte Zahlen hellblau + rotes X
+/// - Normale Zahlen hellgrau + schwarze Ziffer
+/// - Zahlenliste unter jedem Tipp (schwarz/rot)
+/// - Buttons oben rechts (GENERIEREN / LÖSCHEN / LÄUFT...)
+/// - Master-Button unten (ALLE GENERIEREN / ALLES LÖSCHEN / GENERIERE ALLES...)
+/// - Automatische Kartenhöhe (kein Überlappen)
+
 const Color _lottoYellow = Color(0xFFFFDD00);
 const Color _lottoRed = Color(0xFFD20000);
 const Color _lottoGrey = Color(0xFFF2F2F2);
+
+/// Hintergrundfarbe für generierte Zahlen
+const Color _generatedBlue = Color(0xFFBEE6FF);
 
 class Lotto6aus49Screen extends StatefulWidget {
   const Lotto6aus49Screen({super.key});
@@ -20,25 +32,32 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
 
   final Random _random = Random();
 
+  /// Favoriten (manuell gesetzte Zahlen)
   final List<List<bool>> _favorites =
       List.generate(tipCount, (_) => List.filled(maxNumber, false));
 
+  /// Generierte Zahlen
   final List<List<bool>> _generated =
       List.generate(tipCount, (_) => List.filled(maxNumber, false));
 
+  /// Aktuelle Highlight-Zahl im Tipp (Lauflicht)
   final List<int?> _currentHighlight =
       List<int?>.filled(tipCount, null);
 
+  /// Läuft gerade eine Animation in diesem Tipp?
   final List<bool> _isAnimatingTip =
       List<bool>.filled(tipCount, false);
 
+  /// Timer je Tipp für das Lauflicht
   final List<Timer?> _tipTimers =
       List<Timer?>.filled(tipCount, null);
 
+  /// Superzahl (Schein)
   int _scheinSuperzahl = 0;
   bool _superzahlGenerated = false;
   bool _isSuperzahlAnimating = false;
 
+  /// Wird gerade „Alle generieren“ ausgeführt?
   bool _isGeneratingAll = false;
 
   @override
@@ -49,18 +68,25 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     super.dispose();
   }
 
+  // ----------------------------------------------------------
+  // Superzahl
+  // ----------------------------------------------------------
+
   Future<void> _runSuperzahlAnimation() async {
     if (_isSuperzahlAnimating) return;
+
     setState(() {
       _isSuperzahlAnimating = true;
       _superzahlGenerated = false;
     });
 
     final int finalNumber = _random.nextInt(10);
+
     const int cycles = 2;
     const int fastDelay = 70;
     const int slowDelay = 140;
 
+    // schnelle Runden
     for (int cycle = 0; cycle < cycles; cycle++) {
       for (int i = 0; i < 10; i++) {
         if (!mounted) return;
@@ -71,6 +97,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
       }
     }
 
+    // letzte langsamere Runde
     for (int i = 0; i <= finalNumber; i++) {
       if (!mounted) return;
       setState(() {
@@ -87,63 +114,64 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     });
   }
 
-
   void _onSuperzahlTap() {
     if (_isSuperzahlAnimating) return;
 
     showDialog<void>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Superzahl wählen'),
-        content: SizedBox(
-          height: 180,
-          child: GridView.builder(
-            shrinkWrap: true,
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 5,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemCount: 10,
-            itemBuilder: (context, index) {
-              final bool isSelected = index == _scheinSuperzahl;
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _scheinSuperzahl = index;
-                    _superzahlGenerated = true;
-                  });
-                  Navigator.pop(context);
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isSelected ? _lottoYellow : Colors.blue[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: _lottoRed),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$index',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Superzahl wählen'),
+          content: SizedBox(
+            height: 180,
+            child: GridView.builder(
+              shrinkWrap: true,
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 5,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: 10,
+              itemBuilder: (context, index) {
+                final bool isSelected = index == _scheinSuperzahl;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _scheinSuperzahl = index;
+                      _superzahlGenerated = true;
+                    });
+                    Navigator.of(context).pop();
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isSelected ? _lottoYellow : Colors.blue[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _lottoRed),
+                    ),
+                    child: Center(
+                      child: Text(
+                        index.toString(),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Schließen'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Schließen'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -180,8 +208,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                 itemCount: 10,
                 itemBuilder: (context, index) {
                   final bool isSelected = index == _scheinSuperzahl;
-                  final bool isHighlight = _isSuperzahlAnimating &&
-                      index == _scheinSuperzahl;
                   return Container(
                     width: 36,
                     margin: const EdgeInsets.only(right: 4),
@@ -193,10 +219,10 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                     child: Center(
                       child: Text(
                         index.toString(),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isHighlight ? _lottoRed : Colors.black,
+                          color: Colors.black,
                         ),
                       ),
                     ),
@@ -223,6 +249,10 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     );
   }
 
+  // ----------------------------------------------------------
+  // Tipp-Status
+  // ----------------------------------------------------------
+
   bool _tipHasFavorites(int tip) {
     for (int i = 0; i < maxNumber; i++) {
       if (_favorites[tip][i]) return true;
@@ -243,6 +273,10 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     }
     return false;
   }
+
+  // ----------------------------------------------------------
+  // Tipp löschen
+  // ----------------------------------------------------------
 
   void _clearTip(int tip) {
     _tipTimers[tip]?.cancel();
@@ -268,10 +302,15 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     });
   }
 
+  // ----------------------------------------------------------
+  // Tipp generieren (mit Favoriten)
+  // ----------------------------------------------------------
+
   Future<void> _runTipAnimation(int tip) async {
     _tipTimers[tip]?.cancel();
     _tipTimers[tip] = null;
 
+    // Favoriten einsammeln
     final List<int> favs = [];
     for (int i = 0; i < maxNumber; i++) {
       if (_favorites[tip][i]) favs.add(i + 1);
@@ -296,7 +335,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     });
 
     final Set<int> finalSet = {...favs, ...newGen};
-
     int current = 1;
 
     _tipTimers[tip] = Timer.periodic(
@@ -332,7 +370,6 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
       },
     );
   }
-
 
   Future<void> _generateTip(int tip) async {
     if (_isAnimatingTip[tip] || _isGeneratingAll) return;
@@ -375,6 +412,10 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     });
   }
 
+  // ----------------------------------------------------------
+  // Manuelles Togglen einer Zahl
+  // ----------------------------------------------------------
+
   void _toggleNumber(int tip, int index) {
     if (_isAnimatingTip[tip] || _isGeneratingAll) return;
 
@@ -383,6 +424,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
       final bool isGen = _generated[tip][index];
 
       if (!isFav && !isGen) {
+        // neue Favoritenzahl, aber max. 6 insgesamt
         int count = 0;
         for (int i = 0; i < maxNumber; i++) {
           if (_favorites[tip][i] || _generated[tip][i]) {
@@ -402,13 +444,17 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     });
   }
 
+  // ----------------------------------------------------------
+  // Tippfeld UI
+  // ----------------------------------------------------------
+
   Widget _buildTipCard(int tip) {
     final bool isAnimating = _isAnimatingTip[tip] || _isGeneratingAll;
     final int? highlight = _currentHighlight[tip];
 
-    final bool hasFav = _tipHasFavorites(tip);
     final bool hasGen = _tipHasGenerated(tip);
 
+    // finale Zahlenliste für Anzeige unten
     final List<int> finalNums = [];
     for (int i = 0; i < maxNumber; i++) {
       if (_favorites[tip][i] || _generated[tip][i]) {
@@ -436,6 +482,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
+                  color: Colors.black,
                 ),
               ),
               const Spacer(),
@@ -498,6 +545,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
               Widget inner;
 
               if (isHi && !isFinal) {
+                // laufendes Kreuz auf noch nicht finalen Feldern
                 bg = _lottoYellow;
                 inner = const Text(
                   '✗',
@@ -508,7 +556,8 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                   ),
                 );
               } else if (isFinal) {
-                bg = _lottoGrey.withOpacity(0.1);
+                // finale Zahlen
+                bg = isFav ? _lottoYellow : _generatedBlue;
                 inner = Text(
                   '✗',
                   style: TextStyle(
@@ -518,6 +567,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
                   ),
                 );
               } else {
+                // normale Zahl
                 bg = _lottoGrey;
                 inner = Text(
                   number.toString(),
@@ -545,7 +595,7 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
 
           const SizedBox(height: 4),
 
-          // Finale Zahlen unter dem Tippfeld
+          // Finale Zahlenliste unten (nur wenn nicht animiert)
           if (!isAnimating && finalNums.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
@@ -582,6 +632,10 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
       ),
     );
   }
+
+  // ----------------------------------------------------------
+  // Master-Button unten
+  // ----------------------------------------------------------
 
   Widget _buildBottomMasterButton() {
     final bool anyContent = _anyTipHasContent();
@@ -624,6 +678,10 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
     );
   }
 
+  // ----------------------------------------------------------
+  // Build
+  // ----------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     final bool isPortrait =
@@ -642,11 +700,13 @@ class _Lotto6aus49ScreenState extends State<Lotto6aus49Screen> {
             Expanded(
               child: GridView.builder(
                 itemCount: tipCount,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate:
+                    SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: isPortrait ? 2 : 3,
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
-                  childAspectRatio: isPortrait ? 0.70 : 1.25,
+                  // feste Höhe pro Karte, damit nichts überlappt
+                  mainAxisExtent: isPortrait ? 300 : 260,
                 ),
                 itemBuilder: (context, index) => _buildTipCard(index),
               ),
