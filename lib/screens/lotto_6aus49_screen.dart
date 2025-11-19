@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../core/lg_sounds.dart';
 
 /// Lotto 6aus49 – Version mit:
 /// - 7×7 Grid (1–49) vollständig sichtbar (angepasste Kartenhöhe)
