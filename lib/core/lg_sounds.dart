@@ -1,35 +1,57 @@
 import 'package:audioplayers/audioplayers.dart';
 
-/// Zentrale Sound-Helfer für Lotto-Animationen.
-/// Nutzt die vier WAV-Dateien aus assets/sounds/.
+/// Zentraler Sound-Controller.
+/// Nutzt neue audioplayers API (AudioPlayer + AssetSource)
+
 class LGSounds {
-  static Future<void> _playAsset(String path) async {
-    final player = AudioPlayer();
-    await player.play(AssetSource(path));
+  static final AudioPlayer _spinStart = AudioPlayer();
+  static final AudioPlayer _spinEnd   = AudioPlayer();
+  static final AudioPlayer _snakeEat  = AudioPlayer();
+  static final AudioPlayer _snakeExit = AudioPlayer();
+  static final AudioPlayer _snakeStart = AudioPlayer();
+
+  static Future<void> playSpinStart() async {
+    try {
+      await _spinStart.play(
+        AssetSource('sounds/spin.wav'),
+        volume: 1.0,
+      );
+    } catch (_) {}
   }
 
-  /// Sound für Start der Superzahl-Kugel (schnelles Drehen / Glücksrad).
-  static Future<void> playSuperzahlSpinStart() async {
-    await _playAsset('assets/sounds/spin.wav');
+  static Future<void> playSpinEnd() async {
+    try {
+      await _spinEnd.play(
+        AssetSource('sounds/slow.wav'),
+        volume: 1.0,
+      );
+    } catch (_) {}
   }
 
-  /// Sound für Ende / Auslaufen der Superzahl-Kugel.
-  static Future<void> playSuperzahlSpinEnd() async {
-    await _playAsset('assets/sounds/slow.wav');
+  static Future<void> playSnakeEat() async {
+    try {
+      await _snakeEat.play(
+        AssetSource('sounds/eat.wav'),
+        volume: 1.0,
+      );
+    } catch (_) {}
   }
 
-  /// Sound wenn die Snake-Animation für die 6 Hauptzahlen startet.
-  static Future<void> playSnakeStartSound() async {
-    await _playAsset('assets/sounds/spin.wav');
+  static Future<void> playSnakeStart() async {
+    try {
+      await _snakeStart.play(
+        AssetSource('sounds/spin.wav'),
+        volume: 1.0,
+      );
+    } catch (_) {}
   }
 
-  /// Sound beim „Fressen“ einer generierten Zahl.
-  static Future<void> playSnakeEatSound() async {
-    await _playAsset('assets/sounds/eat.wav');
-  }
-
-  /// Sound wenn die Snake-Animation fertig ist / das Feld verlässt.
-  static Future<void> playSnakeEndSound() async {
-    await _playAsset('assets/sounds/exit.wav');
+  static Future<void> playSnakeEnd() async {
+    try {
+      await _snakeExit.play(
+        AssetSource('sounds/exit.wav'),
+        volume: 1.0,
+      );
+    } catch (_) {}
   }
 }
