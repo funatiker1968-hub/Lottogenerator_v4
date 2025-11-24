@@ -1,57 +1,57 @@
 import 'package:audioplayers/audioplayers.dart';
 
-/// Zentraler Sound-Controller.
-/// Nutzt neue audioplayers API (AudioPlayer + AssetSource)
+/// Zentrales Sound-Modul für alle Screens.
+/// Nutzt MP3-Dateien aus assets/sounds.
+///
+/// Unterstützt sowohl die neuen Methoden
+///   - playSpinFast / playSpinSlow
+///   - playSnakeEat / playSnakeOut
+/// als auch alte Alias-Namen:
+///   - playSpinStart / playSpinEnd
+///   - playSnakeExit
 
 class LGSounds {
-  static final AudioPlayer _spinStart = AudioPlayer();
-  static final AudioPlayer _spinEnd   = AudioPlayer();
-  static final AudioPlayer _snakeEat  = AudioPlayer();
-  static final AudioPlayer _snakeExit = AudioPlayer();
-  static final AudioPlayer _snakeStart = AudioPlayer();
+  static final AudioPlayer _spinFast = AudioPlayer();
+  static final AudioPlayer _spinSlow = AudioPlayer();
+  static final AudioPlayer _snakeEat = AudioPlayer();
+  static final AudioPlayer _snakeOut = AudioPlayer();
 
-  static Future<void> playSpinStart() async {
+  static Future<void> _safePlay(AudioPlayer player, String asset) async {
     try {
-      await _spinStart.play(
-        AssetSource('sounds/spin.wav'),
-        volume: 1.0,
-      );
+      await player.stop();
+    } catch (_) {}
+    try {
+      await player.play(AssetSource(asset));
     } catch (_) {}
   }
 
-  static Future<void> playSpinEnd() async {
-    try {
-      await _spinEnd.play(
-        AssetSource('sounds/slow.wav'),
-        volume: 1.0,
-      );
-    } catch (_) {}
+  /// Sehr schneller Spin (Startphase der Superzahl)
+  static Future<void> playSpinFast() async {
+    await _safePlay(_spinFast, 'sounds/spin_fast.mp3');
   }
 
+  /// Langsamer Spin (Auslaufphase der Superzahl)
+  static Future<void> playSpinSlow() async {
+    await _safePlay(_spinSlow, 'sounds/spin_slow.mp3');
+  }
+
+  /// Snake isst eine Zahl
   static Future<void> playSnakeEat() async {
-    try {
-      await _snakeEat.play(
-        AssetSource('sounds/eat.wav'),
-        volume: 1.0,
-      );
-    } catch (_) {}
+    await _safePlay(_snakeEat, 'sounds/snake_eat.mp3');
   }
 
-  static Future<void> playSnakeStart() async {
-    try {
-      await _snakeStart.play(
-        AssetSource('sounds/spin.wav'),
-        volume: 1.0,
-      );
-    } catch (_) {}
+  /// Snake verlässt das Spielfeld / läuft unten raus
+  static Future<void> playSnakeOut() async {
+    await _safePlay(_snakeOut, 'sounds/snake_out.mp3');
   }
 
-  static Future<void> playSnakeEnd() async {
-    try {
-      await _snakeExit.play(
-        AssetSource('sounds/exit.wav'),
-        volume: 1.0,
-      );
-    } catch (_) {}
-  }
+  // --------------------------------------------------
+  // Alte Alias-Namen (für ältere Screens/Code-Stände)
+  // --------------------------------------------------
+
+  static Future<void> playSpinStart() async => playSpinFast();
+
+  static Future<void> playSpinEnd() async => playSpinSlow();
+
+  static Future<void> playSnakeExit() async => playSnakeOut();
 }
