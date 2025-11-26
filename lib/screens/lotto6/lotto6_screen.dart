@@ -137,14 +137,11 @@ class _Lotto6ScreenState extends State<Lotto6Screen>
           AnimatedPositioned(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutQuad,
-            left:
-                ((_superHighlight ?? _superNumber) * 3).toDouble(),
-            child: Text(
-              _superNumber.toString(),
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
+            left:  ((_superHighlight ?? _superNumber) * 3).toDouble(),
+            child: Text(_superNumber.toString(),
+            style: const TextStyle(fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Colors.red,
               ),
             ),
           ),
@@ -299,7 +296,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen>
             ),
           ),
 
-          _buildTaskBar(),
+          _buildTaskBar(context),
         ],
       ),
     );
@@ -386,7 +383,6 @@ class _Lotto6ScreenState extends State<Lotto6Screen>
   // Tippkarte
   // --------------------------------------------------------------
   Widget _buildTipCard(int index) {
-    final tip = _generated[index];
     final fav = _favorites[index];
 
     return Container(
@@ -569,9 +565,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen>
   // --------------------------------------------------------------
   // Untere Bedienleiste (TASK BAR)
   // --------------------------------------------------------------
-  Widget _buildTaskBar() {
-    return Container(
-      height: LottoDim.taskbarHeight,
+  Widget _buildTaskBar(BuildContext context) {
+      return Container(
+      height: LottoDim.taskbarHeight(context),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: const BoxDecoration(
         color: Colors.yellow,
@@ -661,4 +657,5 @@ class LGSounds {
 // --------------------------------------------------------------
 // Ende der Datei
 // --------------------------------------------------------------
+
 
