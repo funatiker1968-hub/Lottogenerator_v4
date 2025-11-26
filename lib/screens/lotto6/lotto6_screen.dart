@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 
 import 'core_colors.dart';
@@ -8,13 +7,14 @@ import 'core_dimensions.dart';
 import 'core/core_sounds.dart';
 
 /// Lotto 6aus49 – modularer Screen
-/// - 12 Tippfelder
-/// - Superzahl-Kugel (größer, plastischer, Drehung + Tick-Sound)
-/// - 7×7 Grid komplett sichtbar
-/// - Favoriten-Logik (manuelle Zahlen bleiben bei „Alle generieren“ erhalten)
-/// - Snake-ähnliches Lauflicht über das Zahlenfeld
-/// - Ergebnisleiste unter dem Tipp
-/// - Taskleiste unten mit Mute + „Alle generieren“ / „Alles löschen“
+/// Verbesserte Version mit:
+/// • Superzahl-Lauflicht (langsamer Auslauf + Blinkphase)
+/// • Horizontale Animation in der Superzahl-Kugel
+/// • 7×7 Grid komplett sichtbar
+/// • Snake-Animation erweitert (Bissspuren + Pulsieren)
+/// • Sequenzielle Tippgenerierung
+/// • Neue Sounds aus assets/sounds
+
 class Lotto6Screen extends StatefulWidget {
   const Lotto6Screen({super.key});
 
@@ -30,7 +30,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen>
 
   final Random _rnd = Random();
 
-  /// Favoriten je Tipp (manuell gewählte Zahlen)
+  /// Favoriten je Tipp
   final List<Set<int>> _favorites =
       List.generate(tipCount, (_) => <int>{});
 
@@ -38,376 +38,315 @@ class _Lotto6ScreenState extends State<Lotto6Screen>
   final List<Set<int>> _generated =
       List.generate(tipCount, (_) => <int>{});
 
-  /// Aktuell gehighlightete Zahl pro Tipp (Lauflicht)
+  /// Lauflicht-Highlight (für Snake-Effekt)
   final List<int?> _highlight = List<int?>.filled(tipCount, null);
 
-  /// Läuft gerade eine Animation in diesem Tipp?
+  /// Animationsstatus je Tipp
   final List<bool> _isAnimating = List<bool>.filled(tipCount, false);
 
-  /// Timer je Tipp für das Lauflicht
+  /// Timer je Tipp (für Snake-Lauflicht)
   final List<Timer?> _timers = List<Timer?>.filled(tipCount, null);
 
-  /// Superzahl-Zustände
+  /// Superzahl (final)
   int _superNumber = 0;
-  bool _superGenerated = false;
+
+  /// aktuell gehighlightete Superzahl
+  int? _superHighlight;
+
+  /// Animation Superzahl läuft?
   bool _superRunning = false;
 
-  /// Globaler Zustand für „Alle generieren“
+  /// globaler Status für „Alle generieren“
   bool _allRunning = false;
 
-  /// Globaler Mute
+  /// Sound stumm?
   bool _mute = false;
 
-  /// Animation für die Superzahl-Kugel (Rotation + leichtes „Bouncen“)
-  late final AnimationController _ballSpinController;
-  late final Animation<double> _ballSpinAnimation;
-  late final AnimationController _ballScaleController;
-  late final Animation<double> _ballScaleAnimation;
+  /// Bissmarkierungen für Snake-Effekt
+  final List<bool> _bitten = List<bool>.filled(maxNumber + 1, false);
 
-  @override
-  void initState() {
-    super.initState();
+  /// Pulsieren nach Snake-Ende
+  bool _pulse = false;
 
-    _ballSpinController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-
-    _ballSpinAnimation =
-        Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(
-      parent: _ballSpinController,
-      curve: Curves.easeOutQuad,
-    ));
-
-    _ballScaleController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 350),
-    );
-
-    _ballScaleAnimation =
-        Tween<double>(begin: 1.0, end: 1.08).animate(CurvedAnimation(
-      parent: _ballScaleController,
-      curve: Curves.easeOutBack,
-    ));
-  }
-
-  @override
-  void dispose() {
-    for (final t in _timers) {
-      t?.cancel();
-    }
-    _ballSpinController.dispose();
-    _ballScaleController.dispose();
-    super.dispose();
-  }
-
-  // ---------------------------------------------------------------------------
-  //  GENERIERLOGIK
-  // ---------------------------------------------------------------------------
-
-  /// Erzeugt einen Tipp mit 6 Zahlen, Favoriten werden bevorzugt übernommen.
-  Set<int> _makeTip(Set<int> favorites) {
-    final Set<int> result = {...favorites};
-    final List<int> pool =
-        List<int>.generate(maxNumber, (i) => i + 1)..removeWhere(result.contains);
-
-    while (result.length < numbersPerTip && pool.isNotEmpty) {
-      final idx = _rnd.nextInt(pool.length);
-      result.add(pool.removeAt(idx));
-    }
-
-    return result;
-  }
-
-  void _clearTip(int index) {
-    _timers[index]?.cancel();
-    _timers[index] = null;
-
-    setState(() {
-      _generated[index].clear();
-      _highlight[index] = null;
-      _isAnimating[index] = false;
-      // Favoriten bleiben erhalten
-    });
-  }
-
-  void _clearAll() {
-    for (int i = 0; i < tipCount; i++) {
-      _clearTip(i);
-      _favorites[i].clear();
-    }
-    setState(() {
-      _superNumber = 0;
-      _superGenerated = false;
-    });
-  }
-
-  void _toggleFavorite(int tipIndex, int number) {
-    if (_isAnimating[tipIndex]) return;
-
-    final fav = _favorites[tipIndex];
-
-    setState(() {
-      if (fav.contains(number)) {
-        fav.remove(number);
-      } else {
-        // Maximal 6 Favoriten, sonst nichts mehr
-        if (fav.length < numbersPerTip) {
-          fav.add(number);
-        }
-      }
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  //  SUPERZAHL – Animation
-  // ---------------------------------------------------------------------------
-
-  Future<void> _runSuperAnimation() async {
+  // --------------------------------------------------------------
+  // Superzahl – Hauptanimation (MIT verbessertem Lauflicht)
+  // --------------------------------------------------------------
+  Future<void> startSuperNumber() async {
     if (_superRunning) return;
 
-    setState(() {
-      _superRunning = true;
-      _superGenerated = false;
-    });
+    _superRunning = true;
+    if (!_mute) LGSounds.playSpinFast();
 
-    final int target = _rnd.nextInt(10);
-    int current = _superNumber;
-
-    // Zwei schnelle Runden
-    for (int round = 0; round < 2; round++) {
+    // Runde 1–3 schnell, Runde 4 verlangsamt
+    for (int round = 1; round <= 4; round++) {
       for (int i = 0; i < 10; i++) {
-        if (!mounted) return;
-        current = (current + 1) % 10;
-        setState(() => _superNumber = current);
-        if (!_mute) {
-          LGSounds.playSpinFast();
-        }
-        _ballSpinController.forward(from: 0);
-        await Future.delayed(const Duration(milliseconds: 60));
+        setState(() => _superHighlight = i);
+
+        // in letzter Runde auf Zielzahl stoppen
+        if (round == 4 && i == _superNumber) break;
+
+        final delay = round < 3
+            ? 100
+            : 100 + 50 * i; // Runde 4 → langsamer
+
+        await Future.delayed(Duration(milliseconds: delay));
       }
     }
 
-    // Langsames Einrasten auf die Zielzahl
-    while (current != target) {
-      if (!mounted) return;
-      current = (current + 1) % 10;
-      setState(() => _superNumber = current);
-      if (!_mute) {
-        LGSounds.playSpinSlow();
-      }
-      _ballSpinController.forward(from: 0);
-      await Future.delayed(const Duration(milliseconds: 120));
+    if (!_mute) LGSounds.playSpinSlow();
+
+    // Finales Blinken
+    for (int j = 0; j < 5; j++) {
+      setState(() => _superHighlight = null);
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      setState(() => _superHighlight = _superNumber);
+      await Future.delayed(const Duration(milliseconds: 200));
     }
 
-    if (!mounted) return;
-    setState(() {
-      _superNumber = target;
-      _superRunning = false;
-      _superGenerated = true;
-    });
-
-    // kleines „Bounce“ nach dem Einrasten
-    _ballScaleController
-      ..reset()
-      ..forward();
+    _superRunning = false;
   }
 
-  // ---------------------------------------------------------------------------
-  //  TIPP-ANIMATION (Snake-ähnliches Lauflicht)
-  // ---------------------------------------------------------------------------
+  // --------------------------------------------------------------
+  // Superzahl – Kugel mit horizontal animierter Ziffer
+  // --------------------------------------------------------------
+  Widget _buildSuperBall() {
+    return SizedBox(
+      width: LottoDim.superBallSize,
+      height: LottoDim.superBallSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Kugel
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.yellow[600],
+              border: Border.all(color: kLottoRed, width: 2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                )
+              ],
+            ),
+          ),
 
-  Future<void> _startTipAnimation(int index) async {
+          // animierte Ziffer (links → rechts)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutQuad,
+            left:
+                ((_superHighlight ?? _superNumber) * 3).toDouble(),
+            child: Text(
+              _superNumber.toString(),
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+// --------------------------------------------------------------
+  // Tippkarten – Generator für EINEN Tipp (6 Zahlen)
+  // --------------------------------------------------------------
+  Future<void> _generateTip(int index) async {
     if (_isAnimating[index]) return;
 
-    final Set<int> fav = _favorites[index];
-    final Set<int> finalNumbers = _makeTip(fav);
+    _generated[index].clear();
+    _bitten.fillRange(0, _bitten.length, false);
+
+    _isAnimating[index] = true;
+
+    // Snake-Effekt: Highlight wandert durch alle Zahlen
+    int pos = 1;
+    _timers[index]?.cancel();
+    _timers[index] = Timer.periodic(
+      const Duration(milliseconds: 60),
+      (timer) {
+        if (!mounted) return;
+
+        setState(() {
+          _highlight[index] = pos;
+        });
+
+        pos++;
+        if (pos > maxNumber) pos = 1;
+      },
+    );
+
+    // kurze Laufzeit, dann stoppen
+    await Future.delayed(const Duration(milliseconds: 800));
 
     _timers[index]?.cancel();
 
-    setState(() {
-      _isAnimating[index] = true;
-      _highlight[index] = 1;
-    });
-
-    int current = 1;
-
-    _timers[index] = Timer.periodic(
-      const Duration(milliseconds: 70),
-      (Timer t) {
-        if (!mounted) {
-          t.cancel();
-          return;
-        }
-
-        setState(() {
-          _highlight[index] = current;
-        });
-
-        if (!_mute && finalNumbers.contains(current)) {
-          LGSounds.playSnakeEat();
-        }
-
-        if (current >= maxNumber) {
-          t.cancel();
-          setState(() {
-            _generated[index]
-              ..clear()
-              ..addAll(finalNumbers);
-            _highlight[index] = null;
-            _isAnimating[index] = false;
-          });
-          if (!_mute) {
-            LGSounds.playSnakeOut();
-          }
-        } else {
-          current++;
-        }
-      },
-    );
-  }
-
-  Future<void> _generateOne(int index) async {
-    if (_isAnimating[index]) return;
-
-    if (!_superGenerated) {
-      await _runSuperAnimation();
-      if (!mounted) return;
+    // Generiere genau 6 eindeutige Zahlen
+    final Set<int> result = {};
+    while (result.length < numbersPerTip) {
+      int n = _rnd.nextInt(maxNumber) + 1;
+      result.add(n);
     }
 
-    await _startTipAnimation(index);
+    // Beim Setzen: Biss-Effekt aktivieren
+    for (final n in result) {
+      _bitten[n] = true;
+      if (!_mute) LGSounds.playSnakeEat();
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
+    setState(() {
+      _generated[index] = result;
+      _highlight[index] = null;
+    });
+
+    // Nach der Snake → Pulsierung
+    for (int k = 0; k < 3; k++) {
+      setState(() => _pulse = true);
+      await Future.delayed(const Duration(milliseconds: 200));
+      setState(() => _pulse = false);
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+
+    _isAnimating[index] = false;
   }
 
+  // --------------------------------------------------------------
+  // ALLE Tipps nacheinander generieren (NEU)
+  // --------------------------------------------------------------
   Future<void> _generateAll() async {
     if (_allRunning) return;
 
     setState(() => _allRunning = true);
 
-    if (!_superGenerated) {
-      await _runSuperAnimation();
-      if (!mounted) {
-        setState(() => _allRunning = false);
-        return;
-      }
-    }
-
     for (int i = 0; i < tipCount; i++) {
-      await _startTipAnimation(i);
-      if (!mounted) {
-        setState(() => _allRunning = false);
-        return;
-      }
-      await Future.delayed(const Duration(milliseconds: 200));
+      await _generateTip(i);
+      await Future.delayed(const Duration(milliseconds: 300));
     }
 
-    if (!mounted) return;
     setState(() => _allRunning = false);
   }
 
-  // ---------------------------------------------------------------------------
-  //  UI – Superzahl-Bereich
-  // ---------------------------------------------------------------------------
+  // --------------------------------------------------------------
+  // Tipp zurücksetzen
+  // --------------------------------------------------------------
+  void _clearTip(int index) {
+    _timers[index]?.cancel();
+    setState(() {
+      _highlight[index] = null;
+      _generated[index].clear();
+      _favorites[index].clear();
+    });
+  }
 
-  Widget _buildSuperRow() {
-    return Container(
-      height: LottoDim.superRowHeight(context),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.blue[600],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kLottoRed, width: 1.4),
+  // --------------------------------------------------------------
+  // ALLES löschen
+  // --------------------------------------------------------------
+  void _clearAll() {
+    for (int i = 0; i < tipCount; i++) {
+      _clearTip(i);
+    }
+  }
+
+  // --------------------------------------------------------------
+  // Build – Hauptaufbau
+  // --------------------------------------------------------------
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: kBackground,
+      appBar: AppBar(
+        backgroundColor: kLottoYellow,
+        title: const Text(
+          'Lotto 6aus49',
+          style: TextStyle(
+            color: kLottoRed,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            onPressed: () {
+              setState(() => _mute = !_mute);
+            },
+            icon: Icon(
+              _mute ? Icons.volume_off : Icons.volume_up,
+              color: Colors.red,
+            ),
+          ),
+        ],
       ),
-      child: Row(
+      body: Column(
         children: [
-          // Kugel
-          SizedBox(
-            width: LottoDim.superBallSize,
-            height: LottoDim.superBallSize,
-            child: AnimatedBuilder(
-              animation: Listenable.merge(
-                  [_ballSpinController, _ballScaleController]),
-              builder: (context, child) {
-                final double scale = _ballScaleAnimation.value;
-                final double turns = _ballSpinAnimation.value;
-                return Transform.rotate(
-                  angle: turns * 6.28318,
-                  child: Transform.scale(
-                    scale: scale,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            kLottoYellow,
-                            kLottoYellow.withOpacity(0.8),
-                            Colors.orange[200]!,
-                          ],
-                          center: const Alignment(-0.3, -0.3),
-                          radius: 0.9,
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 8,
-                            offset: Offset(2, 4),
-                          ),
-                        ],
-                        border: Border.all(color: kLottoRed, width: 3),
-                      ),
-                      child: Center(
-                        child: Text(
-                          _superNumber.toString(),
-                          style: TextStyle(
-                            fontSize: LottoDim.superBallFontSize,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
+          const SizedBox(height: 8),
+
+          // Superzahl-Bereich
+          _buildSuperRow(),
+
+          const SizedBox(height: 10),
+
+          // Tippkarten-Bereich
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              itemCount: tipCount,
+              itemBuilder: (context, i) => _buildTipCard(i),
             ),
           ),
 
-          const SizedBox(width: LottoDim.superRowSpacing),
+          _buildTaskBar(),
+        ],
+      ),
+    );
+  }
+// --------------------------------------------------------------
+  // Superzahl – Zeile mit Kugel und Zahlenleiste
+  // --------------------------------------------------------------
+  Widget _buildSuperRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        children: [
+          _buildSuperBall(),
+          const SizedBox(width: 12),
 
           // Leiste 0–9
           Expanded(
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.blue[400],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: kLottoRed, width: 1.2),
-              ),
+            child: SizedBox(
+              height: LottoDim.superBallSize * 0.65,
               child: GridView.builder(
-                itemCount: 10,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate:
                     const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 10,
-                  crossAxisSpacing: 4,
+                  crossAxisSpacing: 2,
                   mainAxisSpacing: 2,
-                  childAspectRatio: 1,
                 ),
+                itemCount: 10,
                 itemBuilder: (context, i) {
-                  final bool isSel = _superNumber == i;
-                  return Container(
+                  final isHighlight = i == _superHighlight;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
                     decoration: BoxDecoration(
-                      color: isSel ? kLottoYellow : Colors.blue[100],
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: kLottoRed),
+                      color: isHighlight
+                          ? Colors.redAccent
+                          : Colors.yellow[600],
+                      shape: BoxShape.circle,
+                      border:
+                          Border.all(color: Colors.red.shade900, width: 1.5),
                     ),
                     child: Center(
                       child: Text(
                         i.toString(),
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isSel ? kLottoRed : Colors.black,
+                          color: isHighlight ? Colors.white : Colors.red,
                         ),
                       ),
                     ),
@@ -417,29 +356,24 @@ class _Lotto6ScreenState extends State<Lotto6Screen>
             ),
           ),
 
-          const SizedBox(width: LottoDim.superRowSpacing),
+          const SizedBox(width: 10),
 
-          // Start / Läuft-Button
-          SizedBox(
-            width: 80,
-            height: 40,
-            child: ElevatedButton(
-              onPressed: _superRunning ? null : _runSuperAnimation,
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    _superRunning ? Colors.grey[500] : Colors.green[700],
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+          // Superzahl starten
+          ElevatedButton(
+            onPressed: _superRunning ? null : startSuperNumber,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kLottoRed,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
               ),
-              child: Text(
-                _superRunning ? 'Läuft' : 'Start',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
+            ),
+            child: const Text(
+              'Lauf!',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -448,358 +382,283 @@ class _Lotto6ScreenState extends State<Lotto6Screen>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  //  UI – Ergebnisleiste unter Tippkarte
-  // ---------------------------------------------------------------------------
-
-  Widget _buildResultRow(int index) {
-    final Set<int> fin = _generated[index];
-    if (fin.isEmpty) {
-      return const SizedBox(height: 40);
-    }
-
-    final List<int> sorted = fin.toList()..sort();
-
-    return Container(
-      margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.yellow[200],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kLottoRed),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 18,
-            height: 18,
-            decoration: BoxDecoration(
-              color: kHitGreen,
-              shape: BoxShape.circle,
-              border: Border.all(color: kLottoRed, width: 1.2),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: sorted.map((n) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: kLottoRed, width: 1),
-                  ),
-                  child: Text(
-                    n.toString(),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 18,
-            height: 18,
-            decoration: BoxDecoration(
-              color: kHitGreen,
-              shape: BoxShape.circle,
-              border: Border.all(color: kLottoRed, width: 1.2),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  //  UI – Tippkarte
-  // ---------------------------------------------------------------------------
-
+  // --------------------------------------------------------------
+  // Tippkarte
+  // --------------------------------------------------------------
   Widget _buildTipCard(int index) {
+    final tip = _generated[index];
     final fav = _favorites[index];
-    final gen = _generated[index];
-    final hl = _highlight[index];
-    final run = _isAnimating[index];
-    final has = gen.isNotEmpty;
 
     return Container(
-      margin: const EdgeInsets.all(4),
-      padding: const EdgeInsets.all(6),
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.yellow[600],
         borderRadius: BorderRadius.circular(LottoDim.tipCardRadius),
-        border: Border.all(color: Colors.orange[800]!, width: 1.1),
+        border: Border.all(color: Colors.orange[800]!, width: 1),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Kopfzeile
+          // Titel
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Tipp ${index + 1}',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  color: Colors.red,
                 ),
               ),
-              const Spacer(),
+              Row(
+                children: [
+                  // Favoriten löschen
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      setState(() => fav.clear());
+                    },
+                    icon: const Icon(Icons.favorite_border,
+                        color: Colors.red),
+                  ),
+                  // Tipp löschen
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _clearTip(index),
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // Grid 1–49
+          AspectRatio(
+            aspectRatio: 7 / 6.2, // angepasst für komplette Sichtbarkeit
+            child: _buildNumberGrid(index),
+          ),
+
+          const SizedBox(height: 4),
+
+          // Buttons Tipp generieren
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
               ElevatedButton(
-                onPressed: run
+                onPressed: _isAnimating[index]
                     ? null
-                    : has
-                        ? () => _clearTip(index)
-                        : () => _generateOne(index),
+                    : () => _generateTip(index),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: run
-                      ? Colors.grey[500]
-                      : has
-                          ? Colors.red[700]
-                          : Colors.green[700],
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  minimumSize: const Size(0, 0),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  backgroundColor: kLottoRed,
                 ),
-                child: Text(
-                  run
-                      ? 'Läuft...'
-                      : has
-                          ? 'Löschen'
-                          : 'Generieren',
-                  style: const TextStyle(
-                    fontSize: 11,
+                child: const Text(
+                  'Generieren',
+                  style: TextStyle(
                     color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => _clearTip(index),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                ),
+                child: const Text(
+                  'Löschen',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-
-          // Zahlenraster 7×7
-          AspectRatio(
-            aspectRatio: LottoDim.gridColumns / 6,
-            child: GridView.builder(
-              padding: EdgeInsets.zero,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: LottoDim.gridColumns,
-                crossAxisSpacing: LottoDim.gridSpacing,
-                mainAxisSpacing: LottoDim.gridSpacing,
-                childAspectRatio: LottoDim.gridAspectRatio,
-              ),
-              itemCount: maxNumber,
-              itemBuilder: (context, idx) {
-                final number = idx + 1;
-                final bool isFav = fav.contains(number);
-                final bool isGen = gen.contains(number);
-                final bool isHL = hl == number;
-
-                Color bg;
-                Color border = kLottoRed;
-                Widget inner;
-
-                if (isHL && !isGen && !isFav) {
-                  // Lauflicht – nur Highlight
-                  bg = kLottoYellow;
-                  inner = Text(
-                    number.toString(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  );
-                } else if (isFav && isGen) {
-                  // Treffer + Favorit
-                  bg = kHitGreenLight;
-                  border = kHitGreen;
-                  inner = Text(
-                    number.toString(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  );
-                } else if (isFav && !isGen) {
-                  // Nur Favorit (noch nicht gezogen)
-                  bg = Colors.white;
-                  border = Colors.blueGrey;
-                  inner = Text(
-                    number.toString(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  );
-                } else if (!isFav && isGen) {
-                  // Nur generiert
-                  bg = kLottoGrey;
-                  inner = Text(
-                    number.toString(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  );
-                } else {
-                  // Neutral
-                  bg = kLottoGrey;
-                  inner = Text(
-                    number.toString(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  );
-                }
-
-                return GestureDetector(
-                  onTap: () => _toggleFavorite(index, number),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: bg,
-                      borderRadius: BorderRadius.circular(3),
-                      border: Border.all(color: border, width: 0.7),
-                    ),
-                    child: Center(child: inner),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          _buildResultRow(index),
         ],
       ),
     );
   }
+// --------------------------------------------------------------
+  // GRID 1–49 (mit Highlight, Bissspuren und Pulsieren)
+  // --------------------------------------------------------------
+  Widget _buildNumberGrid(int index) {
+    final generated = _generated[index];
+    final highlight = _highlight[index];
 
-  // ---------------------------------------------------------------------------
-  //  UI – Untere Taskleiste
-  // ---------------------------------------------------------------------------
+    return GridView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: LottoDim.gridColumns,
+        crossAxisSpacing: LottoDim.gridSpacing,
+        mainAxisSpacing: LottoDim.gridSpacing,
+        childAspectRatio: LottoDim.gridAspectRatio,
+      ),
+      itemCount: maxNumber,
+      itemBuilder: (context, i) {
+        final number = i + 1;
+        final isGenerated = generated.contains(number);
+        final isFav = _favorites[index].contains(number);
+        final isHighlight = highlight == number;
 
-  Widget _buildBottomBar() {
+        final wasBitten = _bitten[number];
+        final pulse = wasBitten && _pulse;
+
+        Color bg = Colors.white;
+        Color border = Colors.grey.shade400;
+
+        // generierte Zahlen gelb
+        if (isGenerated) {
+          bg = Colors.yellow.shade300;
+          border = Colors.orange.shade600;
+        }
+
+        // Favoriten rot umrandet
+        if (isFav) {
+          border = Colors.red.shade700;
+        }
+
+        // Snake-Lauflicht Highlight
+        if (isHighlight) {
+          bg = Colors.redAccent;
+          border = Colors.red.shade900;
+        }
+
+        // Bissspuren + Pulsieren
+        if (pulse) {
+          bg = Colors.red.shade100.withOpacity(0.6);
+          border = Colors.red.shade700;
+        } else if (wasBitten) {
+          bg = Colors.red.shade50.withOpacity(0.7);
+          border = Colors.red.shade400;
+        }
+
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              if (_favorites[index].contains(number)) {
+                _favorites[index].remove(number);
+              } else {
+                _favorites[index].add(number);
+              }
+            });
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: border, width: 1.5),
+            ),
+            child: Center(
+              child: Text(
+                number.toString(),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight:
+                      isGenerated ? FontWeight.bold : FontWeight.normal,
+                  color: isHighlight ? Colors.white : Colors.black,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --------------------------------------------------------------
+  // Untere Bedienleiste (TASK BAR)
+  // --------------------------------------------------------------
+  Widget _buildTaskBar() {
     return Container(
-      height: LottoDim.taskbarHeight(context),
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.black87,
+      height: LottoDim.taskbarHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: const BoxDecoration(
+        color: Colors.yellow,
         border: Border(
-          top: BorderSide(color: Colors.grey[800]!, width: 1),
+          top: BorderSide(color: Colors.orange, width: 2),
         ),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          IconButton(
-            iconSize: LottoDim.taskbarIconSize,
-            icon: Icon(
-              _mute ? Icons.volume_off : Icons.volume_up,
-              color: Colors.white,
+          // ALLE generieren
+          ElevatedButton(
+            onPressed: _allRunning ? null : _generateAll,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kLottoRed,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 18, vertical: 10),
             ),
-            onPressed: () {
-              setState(() => _mute = !_mute);
-            },
+            child: const Text(
+              'Alle generieren',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold),
+            ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _allRunning ? null : _generateAll,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _allRunning
-                          ? Colors.grey[400]
-                          : Colors.greenAccent,
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                    child: Text(
-                      _allRunning ? 'Läuft...' : 'Alle generieren',
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _clearAll,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                    child: const Text(
-                      'Alles löschen',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+
+          // ALLES löschen
+          ElevatedButton(
+            onPressed: _clearAll,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange.shade700,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 18, vertical: 10),
+            ),
+            child: const Text(
+              'Alle löschen',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  //  BUILD
-  // ---------------------------------------------------------------------------
-
-  @override
-  Widget build(BuildContext context) {
-    final orientation = MediaQuery.of(context).orientation;
-    final bool isPortrait = orientation == Orientation.portrait;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Lotto 6aus49'),
-        backgroundColor: kLottoRed,
-      ),
-      bottomNavigationBar: _buildBottomBar(),
-      body: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          children: [
-            _buildSuperRow(),
-            const SizedBox(height: 8),
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: isPortrait ? 2 : 3,
-                childAspectRatio: isPortrait ? 0.78 : 0.95,
-                children: List.generate(
-                  tipCount,
-                  (i) => _buildTipCard(i),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 }
+// --------------------------------------------------------------
+// Farben & Styles – falls benötigt, hier Referenz
+// --------------------------------------------------------------
+
+// In core_colors.dart definiert:
+// const Color kLottoRed = Color(0xFFD40000);
+// const Color kLottoYellow = Color(0xFFFFEB3B);
+// const Color kBackground = Color(0xFFFFFDE7);
+
+// --------------------------------------------------------------
+// Dimensionen – Referenz aus core_dimensions.dart
+// --------------------------------------------------------------
+
+/*
+class LottoDim {
+  static const int gridColumns = 7;
+  static const double gridSpacing = 1.0;
+  static const double gridAspectRatio = 0.82;
+
+  static const double tipCardRadius = 12.0;
+
+  static const double superBallSize = 100;  // erhöhte Größe
+
+  static const double taskbarHeight = 64.0;
+}
+*/
+
+// --------------------------------------------------------------
+// SOUNDS – Referenz (assets/sounds/...)
+// --------------------------------------------------------------
+
+/*
+class LGSounds {
+  static void playSpinFast();
+  static void playSpinSlow();
+  static void playSnakeEat();
+  static void playSnakeExit();
+}
+*/
+
+// --------------------------------------------------------------
+// Ende der Datei
+// --------------------------------------------------------------
+
