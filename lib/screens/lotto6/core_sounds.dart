@@ -1,53 +1,35 @@
 import 'package:audioplayers/audioplayers.dart';
 
 /// ---------------------------------------------------------------------------
-///  CORE SOUNDS – zentraler Sound-Manager für Lotto 6aus49
+///  CORE SOUNDS – stabil, kompatibel mit audioplayers 5.x
 /// ---------------------------------------------------------------------------
-/// Unterstützt:
-/// - play("datei.mp3")
-/// - stop()
-/// - mute
-/// - preload aller Sounds
-///
-/// Vorhandene Dateien (vom Nutzer bestätigt):
-///   spin_fast.mp3
-///   spin_slow.mp3
-///   snake_exit.mp3            → Stop-Sound für Superzahl
-///   spinner-sound-36693.mp3   → Lotto 1–49 Durchlauf
-/// ---------------------------------------------------------------------------
-
 class LGSounds {
   static final AudioPlayer _player = AudioPlayer();
   static bool mute = false;
 
-  /// Einmalige Vorladung aller relevanten Sounds
+  /// Kann für spätere Vorladungen genutzt werden – derzeit nicht notwendig.
   static Future<void> preload() async {
-    final cache = AudioCache(prefix: 'assets/sounds/');
-
-    await cache.load('spin_fast.mp3');
-    await cache.load('spin_slow.mp3');
-    await cache.load('snake_exit.mp3');
-    await cache.load('spinner-sound-36693.mp3');
+    // no-op
   }
 
-  /// Beliebigen Sound abspielen
+  /// Beliebigen Sound spielen
   static Future<void> play(String fileName) async {
     if (mute) return;
     await _player.stop();
-    await _player.play(AssetSource('sounds/$fileName'));
-  }
-
-  /// Lotto-Durchlauf: kurzer Klicksound pro Highlight
-  static Future<void> playTick() async {
-    if (mute) return;
-    // kein Stop vorher → Tick darf schnell hintereinander kommen
     await _player.play(
-      AssetSource('sounds/spinner-sound-36693.mp3'),
-      volume: 1.0,
+      AssetSource('sounds/$fileName'),
     );
   }
 
-  /// Stoppt laufenden Sound
+  /// Lotto-Klicksound beim Durchlauf (1..49)
+  static Future<void> playTick() async {
+    if (mute) return;
+    await _player.play(
+      AssetSource('sounds/spinner-sound-36693.mp3'),
+    );
+  }
+
+  /// Sound stoppen
   static Future<void> stop() async {
     await _player.stop();
   }

@@ -47,7 +47,6 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   // ====================================================================
   Future<void> _generateTip(int index) async {
     if (_fixed[index]) return;
-    if (_allRunning) return;
 
     final favs = Set<int>.from(_favorites[index]);
     final result = Set<int>.from(favs);
@@ -109,7 +108,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ====================================================================
-  // ALLE TIPPS GENERIEREN
+  // ALLE TIPPS GENERIEREN (läuft sequentiell über alle Tipps)
   // ====================================================================
   Future<void> _generateAll() async {
     if (_allRunning) return;
@@ -119,7 +118,20 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
       await _generateTip(i);
       await Future.delayed(const Duration(milliseconds: 250));
     }
+    if (!mounted) return;
     setState(() => _allRunning = false);
+  }
+
+  // ====================================================================
+  // EINEN TIPP LÖSCHEN
+  // ====================================================================
+  void _clearTip(int index) {
+    setState(() {
+      _generated[index] = [];
+      _highlight[index] = null;
+      _favorites[index].clear();
+      _fixed[index] = false;
+    });
   }
 
   // ====================================================================
@@ -130,6 +142,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
       for (int i = 0; i < tipCount; i++) {
         _generated[i] = [];
         _highlight[i] = null;
+        _favorites[i].clear();
+        _fixed[i] = false;
       }
     });
   }
@@ -209,8 +223,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   // ====================================================================
   Widget _buildTipCard(
       BuildContext context, int index, double width, double height) {
-    final double gridHeight = height * 0.72;
-    final double finalHeight = height * 0.28;
+    final double gridHeight = height * 0.60;
+    final double finalHeight = height * 0.20;
+    final double buttonHeight = height * 0.20;
 
     return Container(
       decoration: BoxDecoration(
@@ -232,14 +247,52 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             ),
           ),
 
+          // Grid
           SizedBox(
             height: gridHeight,
             child: _buildNumberGrid(index),
           ),
 
+          // Finale Reihe
           SizedBox(
             height: finalHeight,
             child: _buildFinalRow(index),
+          ),
+
+          // Buttons: Generieren / Löschen
+          SizedBox(
+            height: buttonHeight,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: _allRunning ? null : () => _generateTip(index),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.greenAccent,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                  ),
+                  child: const Text(
+                    "Generieren",
+                    style: TextStyle(fontSize: 11),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => _clearTip(index),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                  ),
+                  child: const Text(
+                    "Löschen",
+                    style: TextStyle(fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -272,11 +325,16 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
         if (hi) bg = const Color(0xFFFFE4B5);
 
         Color border = kLottoGrey;
-        if (gen) border = Colors.black;
-        else if (fav) border = kLottoRed;
+        if (gen) {
+          border = Colors.black;
+        } else if (fav) {
+          border = kLottoRed;
+        }
 
         Color textColor = Colors.black;
-        if (fav && !gen) textColor = const Color(0xFF8B0000);
+        if (fav && !gen) {
+          textColor = const Color(0xFF8B0000);
+        }
 
         final text = gen ? '✕' : number.toString();
 
@@ -286,6 +344,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
               if (fav) {
                 _favorites[tipIndex].remove(number);
               } else {
+                // Favoriten auf max. 6 begrenzen
+                if (_favorites[tipIndex].length >= numbersPerTip) return;
                 _favorites[tipIndex].add(number);
               }
             });
@@ -301,7 +361,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                 text,
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: gen ? FontWeight.bold : FontWeight.normal,
+                  fontWeight:
+                      gen ? FontWeight.bold : FontWeight.normal,
                   color: textColor,
                 ),
               ),
