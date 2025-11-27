@@ -75,7 +75,6 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
       setState(() => _highlight[index] = n);
 
-      // Lotto-Klicksound
       LGSounds.playTick();
 
       if (nums.contains(n)) {
@@ -161,7 +160,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             // 80 % Tippfelder
             SizedBox(
               height: tipsHeight,
-              child: _buildTipsArea(context, tipsHeight),
+              child: _buildTipsArea(context),
             ),
 
             // 8 % Taskbar
@@ -176,41 +175,41 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ====================================================================
-  // TIPPBEREICH
+  // TIPPBEREICH – Scrollbar + adaptives Layout
   // ====================================================================
+  Widget _buildTipsArea(BuildContext context) {
+    final orientation = MediaQuery.of(context).orientation;
+    final width = MediaQuery.of(context).size.width;
 
-Widget _buildTipsArea(BuildContext context) {
-  final orientation = MediaQuery.of(context).orientation;
-  final width = MediaQuery.of(context).size.width;
+    final columns = (orientation == Orientation.portrait) ? 2 : 3;
 
-  final columns = (orientation == Orientation.portrait) ? 2 : 3;
-
-  return SingleChildScrollView(
-    child: Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: tipCount,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: columns,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.85, // bessere Proportionen
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: tipCount,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.85,
+          ),
+          itemBuilder: (context, index) {
+            return _buildTipCard(context, index, width / columns, 260);
+          },
         ),
-        itemBuilder: (context, index) =>
-            _buildTipCard(context, index, width / columns, 260),
-        ),
-       ),
-     );
-   }
+      ),
+    );
+  }
 
   // ====================================================================
   // EINZELNE TIPP-KARTE
   // ====================================================================
   Widget _buildTipCard(
       BuildContext context, int index, double width, double height) {
-   final double gridHeight = height * 0.72;
+    final double gridHeight = height * 0.72;
     final double finalHeight = height * 0.28;
 
     return Container(
@@ -221,7 +220,6 @@ Widget _buildTipsArea(BuildContext context) {
       ),
       child: Column(
         children: [
-          // Titel
           Padding(
             padding: const EdgeInsets.only(left: 8, top: 4),
             child: Align(
@@ -234,13 +232,11 @@ Widget _buildTipsArea(BuildContext context) {
             ),
           ),
 
-          // Grid
           SizedBox(
             height: gridHeight,
             child: _buildNumberGrid(index),
           ),
 
-          // Finale Reihe
           SizedBox(
             height: finalHeight,
             child: _buildFinalRow(index),
