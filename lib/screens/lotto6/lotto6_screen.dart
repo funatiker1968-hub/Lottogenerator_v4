@@ -178,41 +178,39 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   // ====================================================================
   // TIPPBEREICH
   // ====================================================================
-  Widget _buildTipsArea(BuildContext context, double height) {
-    final orientation = MediaQuery.of(context).orientation;
-    final width = MediaQuery.of(context).size.width;
 
-    final columns = (orientation == Orientation.portrait) ? 2 : 3;
-    final rows = (tipCount / columns).ceil();
+Widget _buildTipsArea(BuildContext context) {
+  final orientation = MediaQuery.of(context).orientation;
+  final width = MediaQuery.of(context).size.width;
 
-    final double cardWidth =
-        (width - (columns - 1) * 8 - 16) / columns;
-    final double cardHeight =
-        (height - (rows - 1) * 8 - 16) / rows;
+  final columns = (orientation == Orientation.portrait) ? 2 : 3;
 
-    return Padding(
+  return SingleChildScrollView(
+    child: Padding(
       padding: const EdgeInsets.all(8.0),
       child: GridView.builder(
+        shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: tipCount,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: columns,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-          childAspectRatio: cardWidth / cardHeight,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.85, // bessere Proportionen
         ),
         itemBuilder: (context, index) =>
-            _buildTipCard(context, index, cardWidth, cardHeight),
-      ),
-    );
-  }
+            _buildTipCard(context, index, width / columns, 260),
+        ),
+       ),
+     );
+   }
 
   // ====================================================================
   // EINZELNE TIPP-KARTE
   // ====================================================================
   Widget _buildTipCard(
       BuildContext context, int index, double width, double height) {
-    final double gridHeight = height * 0.72;
+   final double gridHeight = height * 0.72;
     final double finalHeight = height * 0.28;
 
     return Container(
