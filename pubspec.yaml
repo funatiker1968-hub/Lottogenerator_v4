@@ -18,7 +18,5 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/sounds/spin_fast.mp3
-    - assets/sounds/spin_slow.mp3
-    - assets/sounds/snake_exit.mp3
-    - assets/sounds/spinner-sound-36693.mp3
+    - assets/sounds/
+
