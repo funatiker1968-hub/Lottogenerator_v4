@@ -19,12 +19,12 @@ workflows:
         script: |
           flutter analyze --no-fatal-warnings --no-fatal-infos
 
-      - name: Release-APK bauen
+      - name: Debug-APK bauen
         script: |
-          flutter build apk --release
+          flutter build apk --debug
 
     artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/flutter-apk/app-debug.apk
 
     publishing:
       email:
