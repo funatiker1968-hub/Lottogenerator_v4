@@ -1,14 +1,10 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+import 'walzen.dart';
+
 enum TicketMode { normal, system }
 
-/// Lotto 6aus49 im Stil des Papier-Lottoscheins
-/// - 12 Tippfelder à 1–49
-/// - Normalschein/Systemschein
-/// - Favoriten (manuell) + Generierung (füllt auf)
-/// - Durchlauf-Animation 1..49 mit Highlight bei Treffern
-/// - Losnummer + Zusatzspiele + Ziehungstage + Laufzeit
 class Lotto6Screen extends StatefulWidget {
   const Lotto6Screen({super.key});
 
@@ -26,17 +22,19 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
   TicketMode _mode = TicketMode.normal;
 
-  /// Manuelle Kreuze = Favoriten (werden nicht überschrieben)
-  late final List<Set<int>> _favoritesPerTip;
+  /// Ausgewählte Zahlen pro Tippfeld (Kreuze im Gitter)
+  late final List<Set<int>> _selectedPerTip;
 
-  /// Generierte Zahlen (nur die, die der Generator hinzufügt)
-  late final List<Set<int>> _generatedPerTip;
+  /// Generierte Zahlen pro Tipp (finale 6er-Kombi)
+  late final List<List<int>> _generatedPerTip;
 
-  /// Aktuell gehighlightete Zahl bei der 1..49-Durchlaufanimation
+  /// Aktuelle Highlight-Zahl pro Tipp (für Lauf 1..49)
   late final List<int?> _highlightPerTip;
 
-  /// Läuft gerade für dieses Tippfeld eine Animation?
+  /// Ob Tipp gerade animiert wird
   late final List<bool> _tipRunning;
+
+  bool _allRunning = false;
 
   /// Zusatzspiele
   bool _spiel77 = false;
@@ -46,7 +44,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   /// Ziehungstage: 0 = Mi, 1 = Sa, 2 = Mi+Sa
   int _ziehungstage = 0;
 
-  /// Laufzeit (1,2,4 Wochen oder 0 = Dauer)
+  /// Laufzeit in Wochen: 1,2,4 oder 0 = Dauerschein
   int _laufzeitWochen = 1;
 
   /// 7-stellige Losnummer
@@ -55,27 +53,193 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   @override
   void initState() {
     super.initState();
-    _favoritesPerTip = List.generate(tipCount, (_) => <int>{});
-    _generatedPerTip = List.generate(tipCount, (_) => <int>{});
+    _selectedPerTip = List.generate(tipCount, (_) => <int>{});
+    _generatedPerTip = List.generate(tipCount, (_) => <int>[]);
     _highlightPerTip = List<int?>.filled(tipCount, null);
     _tipRunning = List<bool>.filled(tipCount, false);
     _generateNewLosnummer();
   }
 
+  // ---------------------------------------------------------------------------
+  // LOSNUMMER & WALZE
+  // ---------------------------------------------------------------------------
   void _generateNewLosnummer() {
     _losnummer = List.generate(7, (_) => _rng.nextInt(10)).join();
   }
 
-  int _maxForCurrentMode() =>
-      _mode == TicketMode.normal ? maxNormal : maxSystem;
+  Future<void> _openWalzenScreen() async {
+    final initialDigits = _losnummer.split('').map(int.parse).toList();
+    final result = await Navigator.of(context).push<List<int>>(
+      MaterialPageRoute(
+        builder: (_) => WalzenScreen(
+          initialDigits: initialDigits,
+        ),
+      ),
+    );
 
+    if (result != null && result.length == 7) {
+      setState(() {
+        _losnummer = result.map((e) => e.toString()).join();
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // GENERIERUNG & ANIMATION 1..49
+  // ---------------------------------------------------------------------------
+  int _maxSelectedForMode() {
+    return _mode == TicketMode.normal ? maxNormal : maxSystem;
+  }
+
+  Future<void> _generateTip(int tipIndex) async {
+    if (_tipRunning[tipIndex] || _allRunning) return;
+
+    _tipRunning[tipIndex] = true;
+
+    final currentSelected = Set<int>.from(_selectedPerTip[tipIndex]);
+    final int targetCount = 6;
+
+    // Basis sind die vorhandenen Kreuze
+    final Set<int> result = Set<int>.from(currentSelected);
+
+    // Auffüllen bis 6 Zahlen
+    while (result.length < targetCount) {
+      final n = 1 + _rng.nextInt(maxNumber);
+      result.add(n);
+    }
+
+    final List<int> sorted = result.toList()..sort();
+
+    setState(() {
+      _generatedPerTip[tipIndex] = sorted;
+    });
+
+    // Animation 1..49 mit Highlight
+    await _runHighlightForTip(tipIndex, sorted);
+
+    _tipRunning[tipIndex] = false;
+  }
+
+  Future<void> _runHighlightForTip(int tipIndex, List<int> numbers) async {
+    for (int n = 1; n <= maxNumber; n++) {
+      if (!mounted) return;
+
+      setState(() {
+        _highlightPerTip[tipIndex] = n;
+      });
+
+      final bool isHit = numbers.contains(n);
+      await Future.delayed(
+        Duration(milliseconds: isHit ? 80 : 35),
+      );
+    }
+
+    if (!mounted) return;
+
+    // Finale Kombination 3x als Lauflicht darstellen
+    for (int r = 0; r < 3; r++) {
+      for (final n in numbers) {
+        if (!mounted) return;
+        setState(() {
+          _highlightPerTip[tipIndex] = n;
+        });
+        await Future.delayed(const Duration(milliseconds: 90));
+      }
+      setState(() {
+        _highlightPerTip[tipIndex] = null;
+      });
+      await Future.delayed(const Duration(milliseconds: 120));
+    }
+
+    setState(() {
+      _highlightPerTip[tipIndex] = null;
+    });
+  }
+
+  Future<void> _generateAll() async {
+    if (_allRunning) return;
+
+    setState(() {
+      _allRunning = true;
+    });
+
+    for (int i = 0; i < tipCount; i++) {
+      await _generateTip(i);
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _allRunning = false;
+    });
+  }
+
+  void _clearTip(int index) {
+    setState(() {
+      _selectedPerTip[index].clear();
+      _generatedPerTip[index] = [];
+      _highlightPerTip[index] = null;
+      _tipRunning[index] = false;
+    });
+  }
+
+  void _clearAllTips() {
+    setState(() {
+      for (int i = 0; i < tipCount; i++) {
+        _selectedPerTip[i].clear();
+        _generatedPerTip[i] = [];
+        _highlightPerTip[i] = null;
+        _tipRunning[i] = false;
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // SELECTION-LOGIK IM GITTER
+  // ---------------------------------------------------------------------------
+  void _onNumberTap(int tipIndex, int number) {
+    final set = _selectedPerTip[tipIndex];
+    final maxSel = _maxSelectedForMode();
+
+    setState(() {
+      if (set.contains(number)) {
+        set.remove(number);
+      } else {
+        if (set.length >= maxSel) {
+          // Beim Normalschein max 6, beim System max 12
+          return;
+        }
+        set.add(number);
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // KOMBINATIONEN FÜR SYSTEMANZEIGE
+  // ---------------------------------------------------------------------------
+  int _comb(int n, int k) {
+    if (n < k) return 0;
+    if (k == 0 || n == k) return 1;
+    int r = 1;
+    for (int i = 1; i <= k; i++) {
+      r = r * (n - k + i) ~/ i;
+    }
+    return r;
+  }
+
+  // ---------------------------------------------------------------------------
+  // BUILD
+  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final orientation = media.orientation;
     const background = Color(0xFFFFF6C0); // leicht gelb wie echter Schein
 
-    final int columns = orientation == Orientation.portrait ? 2 : 3;
+    // im Hochformat 2 Spalten, im Querformat 3
+    final int columns =
+        orientation == Orientation.portrait ? 2 : 3;
 
     return Scaffold(
       backgroundColor: background,
@@ -84,8 +248,6 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
           children: [
             _buildHeader(),
             const SizedBox(height: 4),
-
-            // Tippfelder (12)
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -104,7 +266,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                           return SizedBox(
                             width: cardWidth,
                             child: AspectRatio(
-                              aspectRatio: 5 / 4, // ähnliches Format wie Schein
+                              aspectRatio: 5 / 4,
                               child: _buildTipCard(index),
                             ),
                           );
@@ -115,7 +277,6 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                 ),
               ),
             ),
-
             _buildBottomBar(),
           ],
         ),
@@ -124,7 +285,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ---------------------------------------------------------------------------
-  // HEAD-BEREICH – Lotto 6aus49 Titel + Modus-Umschalter
+  // HEADER
   // ---------------------------------------------------------------------------
   Widget _buildHeader() {
     return Container(
@@ -142,10 +303,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             ),
           ),
           const Spacer(),
-
-          // Umschalter Normal <-> System
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.red.shade700,
               borderRadius: BorderRadius.circular(4),
@@ -160,20 +320,28 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                     value: TicketMode.normal,
                     child: Text(
                       'Normalschein',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                   DropdownMenuItem(
                     value: TicketMode.system,
                     child: Text(
                       'Systemschein',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
                 onChanged: (mode) {
                   if (mode == null) return;
-                  setState(() => _mode = mode);
+                  setState(() {
+                    _mode = mode;
+                  });
                 },
               ),
             ),
@@ -184,23 +352,21 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ---------------------------------------------------------------------------
-  // EINZELNE TIPP-KARTE
+  // EINZELNES TIPPFELD
   // ---------------------------------------------------------------------------
   Widget _buildTipCard(int tipIndex) {
-    final int selectedCount = _favoritesPerTip[tipIndex].length;
-    final bool isSystem = _mode == TicketMode.system && selectedCount > 6;
+    final int selectedCount = _selectedPerTip[tipIndex].length;
+    final bool isSystem =
+        _mode == TicketMode.system && selectedCount > 6;
     final int reihen = _comb(selectedCount, 6);
 
     const Color normalBorderColor = Color(0xFFC00000);
-
     final Color borderColor =
         isSystem ? Colors.red.shade900 : normalBorderColor;
-
     final Color fillColor =
         isSystem ? const Color(0xFFFFE0E0) : Colors.white;
 
-    final bool canGenerate =
-        !_tipRunning[tipIndex] && selectedCount < _maxForCurrentMode();
+    final List<int> generated = _generatedPerTip[tipIndex];
 
     return Container(
       decoration: BoxDecoration(
@@ -210,7 +376,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
       ),
       child: Column(
         children: [
-          // Kopfzeile: Tipp X + Anzeige Normal/System
+          // Titel + System-/Anzahlinfo
           Container(
             height: 22,
             padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -235,7 +401,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                       color: Colors.black87,
                     ),
                   )
-                else if (_mode == TicketMode.normal && selectedCount > 0)
+                else if (_mode == TicketMode.normal &&
+                    selectedCount > 0)
                   Text(
                     '$selectedCount / 6',
                     style: const TextStyle(
@@ -250,76 +417,89 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             ),
           ),
 
-          // Raster 1..49
+          // Gitter 1..49
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4,
+                vertical: 2,
+              ),
               child: _buildNumberGrid(tipIndex),
             ),
           ),
 
-          // Button-Leiste: Generieren + Löschen
+          // Finale 6 Zahlen als Kugeln
           SizedBox(
-            height: 30,
+            height: 28,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: canGenerate
-                          ? () => _generateTip(tipIndex)
-                          : null,
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        minimumSize: const Size(0, 0),
-                      ),
-                      child: Text(
-                        _tipRunning[tipIndex] ? 'Läuft…' : 'Generieren',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: canGenerate
-                              ? Colors.green.shade900
-                              : Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _favoritesPerTip[tipIndex].clear();
-                          _generatedPerTip[tipIndex].clear();
-                          _highlightPerTip[tipIndex] = null;
-                          _tipRunning[tipIndex] = false;
-                        });
-                      },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        minimumSize: const Size(0, 0),
-                      ),
-                      child: const Text(
-                        'Löschen',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 3,
+                  children: List.generate(6, (i) {
+                    final int? val =
+                        (i < generated.length) ? generated[i] : null;
+                    return _buildBall(val);
+                  }),
+                ),
               ),
+            ),
+          ),
+
+          // Buttons: Tipp generieren + Löschen
+          SizedBox(
+            height: 26,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed:
+                      _tipRunning[tipIndex] ? null : () => _generateTip(tipIndex),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 0,
+                    ),
+                    minimumSize: const Size(0, 0),
+                  ),
+                  child: Text(
+                    _tipRunning[tipIndex] ? 'Läuft…' : 'Generieren',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _clearTip(tipIndex),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 0,
+                    ),
+                    minimumSize: const Size(0, 0),
+                  ),
+                  child: const Text(
+                    'Löschen',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-// ---------------------------------------------------------------------------
-  // RASTER 1..49 (FAVORITEN + GENERIERTE + HIGHLIGHT)
+
+  // ---------------------------------------------------------------------------
+  // GITTER 1..49
   // ---------------------------------------------------------------------------
   Widget _buildNumberGrid(int tipIndex) {
     const Color gridBorderColor = Color(0xFFC00000);
@@ -327,50 +507,44 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
       itemCount: maxNumber,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate:
+          const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
         crossAxisSpacing: 1,
         mainAxisSpacing: 1,
         childAspectRatio: 1.0,
       ),
       itemBuilder: (context, i) {
-        final number = i + 1;
+        final int number = i + 1;
+        final bool selected =
+            _selectedPerTip[tipIndex].contains(number);
+        final bool isHighlight =
+            _highlightPerTip[tipIndex] == number;
 
-        final bool fav = _favoritesPerTip[tipIndex].contains(number);
-        final bool gen = _generatedPerTip[tipIndex].contains(number);
-        final bool hi = _highlightPerTip[tipIndex] == number;
+        Color textColor = Colors.black;
+        Color bgColor = Colors.white;
 
-        // Darstellung
-        final Color bg = hi
-            ? const Color(0xFFFFE8A0)
-            : Colors.white;
-
-        final Color border = fav
-            ? Colors.red
-            : gen
-                ? Colors.black
-                : gridBorderColor;
-
-        final Color textColor =
-            fav ? Colors.red.shade900 : Colors.black;
-
-        final String label = gen ? 'X' : '$number';
+        if (selected) {
+          textColor = Colors.blue.shade900;
+        }
+        if (isHighlight) {
+          bgColor = const Color(0xFFFFE4B5);
+        }
 
         return GestureDetector(
-          onTap: () => _onNumberTap(tipIndex, number, fav),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 80),
+          onTap: () => _onNumberTap(tipIndex, number),
+          child: Container(
             decoration: BoxDecoration(
-              color: bg,
-              border: Border.all(color: border, width: 0.8),
+              color: bgColor,
+              border: Border.all(color: gridBorderColor, width: 0.8),
             ),
             child: Center(
               child: Text(
-                label,
+                selected ? 'X' : '$number',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 9,
                   fontWeight:
-                      gen ? FontWeight.bold : FontWeight.normal,
+                      selected ? FontWeight.bold : FontWeight.normal,
                   color: textColor,
                 ),
               ),
@@ -382,135 +556,50 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ---------------------------------------------------------------------------
-  // TAP-LOGIK (Favoriten, max 6 im Normalmodus)
+  // KLEINE KUGELN FÜR FINALE ZAHLEN
   // ---------------------------------------------------------------------------
-  void _onNumberTap(int tipIndex, int number, bool alreadyFav) {
-    final maxSel = _maxForCurrentMode();
-    final set = _favoritesPerTip[tipIndex];
-
-    setState(() {
-      if (alreadyFav) {
-        // abwählen
-        set.remove(number);
-        return;
-      }
-
-      // neu anwählen
-      if (set.length >= maxSel) {
-        // im Normalmodus max 6
-        // im System max 12
-        return;
-      }
-
-      set.add(number);
-    });
+  Widget _buildBall(int? n) {
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.red,
+          width: 1.3,
+        ),
+      ),
+      child: n == null
+          ? const SizedBox.shrink()
+          : Center(
+              child: Text(
+                '$n',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF8B0000),
+                ),
+              ),
+            ),
+    );
   }
 
   // ---------------------------------------------------------------------------
-  // TIPP GENERIEREN (füllt nur fehlende Zahlen auf, Favoriten bleiben)
-  // ---------------------------------------------------------------------------
-  Future<void> _generateTip(int tipIndex) async {
-    if (_tipRunning[tipIndex]) return;
-
-    setState(() => _tipRunning[tipIndex] = true);
-
-    final favs = _favoritesPerTip[tipIndex];
-    final gens = _generatedPerTip[tipIndex];
-
-    final int maxSel = _maxForCurrentMode();
-
-    // Generator soll nur Auffüllen bis 6 (oder 12 bei System)
-    while (favs.length + gens.length < maxSel) {
-      final n = 1 + _rng.nextInt(maxNumber);
-      if (favs.contains(n)) continue;
-      gens.add(n);
-    }
-
-    // Reihenfolge sortieren
-    final sorted = [...favs, ...gens]..sort();
-
-    // Speichern
-    setState(() {
-      _generatedPerTip[tipIndex] = sorted.toSet();
-    });
-
-    // Animation starten
-    await _runHighlightForTip(tipIndex);
-
-    if (mounted) {
-      setState(() => _tipRunning[tipIndex] = false);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // DURCHLAUF 1..49 – Treffer blinken länger
-  // ---------------------------------------------------------------------------
-  Future<void> _runHighlightForTip(int tipIndex) async {
-    final hits = _generatedPerTip[tipIndex];
-    if (hits.isEmpty) return;
-
-    for (int n = 1; n <= maxNumber; n++) {
-      if (!mounted) return;
-
-      setState(() => _highlightPerTip[tipIndex] = n);
-
-      if (hits.contains(n)) {
-        await Future.delayed(const Duration(milliseconds: 120));
-      } else {
-        await Future.delayed(const Duration(milliseconds: 40));
-      }
-    }
-
-    if (!mounted) return;
-    setState(() => _highlightPerTip[tipIndex] = null);
-
-    await _finalBlink(tipIndex);
-  }
-
-  // ---------------------------------------------------------------------------
-  // FINALE BLINKSEQUENZ DER 6 ZAHLEN
-  // ---------------------------------------------------------------------------
-  Future<void> _finalBlink(int tipIndex) async {
-    final hits = _generatedPerTip[tipIndex];
-    final sorted = hits.toList()..sort();
-
-    for (int r = 0; r < 3; r++) {
-      for (final n in sorted) {
-        if (!mounted) return;
-        setState(() => _highlightPerTip[tipIndex] = n);
-        await Future.delayed(const Duration(milliseconds: 80));
-      }
-      setState(() => _highlightPerTip[tipIndex] = null);
-      await Future.delayed(const Duration(milliseconds: 80));
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // KOMBINATIONEN (Systemschein)
-  // ---------------------------------------------------------------------------
-  int _comb(int n, int k) {
-    if (n < k) return 0;
-    int r = 1;
-    for (int i = 1; i <= k; i++) {
-      r = r * (n - k + i) ~/ i;
-    }
-    return r;
-  }
-// ---------------------------------------------------------------------------
-  // UNTERE ROTE LEISTE (Losnummer + Zusatzspiele + Ziehungstage + Laufzeit)
+  // UNTERE ROTE LEISTE
   // ---------------------------------------------------------------------------
   Widget _buildBottomBar() {
+    const Color redBar = Color(0xFFD00000);
+
     return Container(
-      height: 100,
-      color: const Color(0xFFD00000),
+      height: 110,
+      color: redBar,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
         children: [
-          // -----------------------------------------------------------------
-          // LOSNUMMER
-          // -----------------------------------------------------------------
+          // WALZE + LOSNUMMER
           Expanded(
-            flex: 3,
+            flex: 4,
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
@@ -533,11 +622,14 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                     children: [
                       for (int i = 0; i < _losnummer.length; i++)
                         Container(
-                          width: 20,
-                          height: 26,
-                          margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                          width: 18,
+                          height: 24,
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black, width: 1),
+                            border: Border.all(
+                              color: Colors.black,
+                              width: 1,
+                            ),
                           ),
                           child: Center(
                             child: Text(
@@ -551,17 +643,35 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                         ),
                       const SizedBox(width: 6),
                       ElevatedButton(
-                        onPressed: () {
-                          setState(_generateNewLosnummer);
-                        },
+                        onPressed: _generateNewLosnummer,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                         ),
-                        child:
-                            const Text('Zufällig', style: TextStyle(fontSize: 11)),
+                        child: const Text(
+                          'Zufällig',
+                          style: TextStyle(fontSize: 11),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      ElevatedButton(
+                        onPressed: _openWalzenScreen,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                        ),
+                        child: const Text(
+                          'Walze',
+                          style: TextStyle(fontSize: 11),
+                        ),
                       ),
                     ],
                   ),
@@ -572,9 +682,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
           const SizedBox(width: 6),
 
-          // -----------------------------------------------------------------
-          // ZUSATZSPIELE: Spiel77, Super6, Glücksspirale
-          // -----------------------------------------------------------------
+          // ZUSATZSPIELE
           Expanded(
             flex: 3,
             child: Container(
@@ -599,12 +707,22 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                     spacing: 6,
                     runSpacing: 2,
                     children: [
-                      _buildMiniCheckbox('Spiel 77', _spiel77,
-                          (v) => setState(() => _spiel77 = v)),
-                      _buildMiniCheckbox('SUPER 6', _super6,
-                          (v) => setState(() => _super6 = v)),
-                      _buildMiniCheckbox('Glücksspirale', _gluecksspirale,
-                          (v) => setState(() => _gluecksspirale = v)),
+                      _buildMiniCheckbox(
+                        'Spiel 77',
+                        _spiel77,
+                        (v) => setState(() => _spiel77 = v),
+                      ),
+                      _buildMiniCheckbox(
+                        'SUPER 6',
+                        _super6,
+                        (v) => setState(() => _super6 = v),
+                      ),
+                      _buildMiniCheckbox(
+                        'Glücksspirale',
+                        _gluecksspirale,
+                        (v) =>
+                            setState(() => _gluecksspirale = v),
+                      ),
                     ],
                   ),
                 ],
@@ -614,14 +732,11 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
           const SizedBox(width: 6),
 
-          // -----------------------------------------------------------------
           // ZIEHUNGSTAGE + LAUFZEIT
-          // -----------------------------------------------------------------
           Expanded(
-            flex: 3,
+            flex: 4,
             child: Column(
               children: [
-                // Ziehungstage
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.all(4),
@@ -652,10 +767,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 4),
-
-                // Laufzeit
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.all(4),
@@ -698,7 +810,11 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   // ---------------------------------------------------------------------------
   // MINI-CHECKBOXEN
   // ---------------------------------------------------------------------------
-  Widget _buildMiniCheckbox(String label, bool value, Function(bool) onChanged) {
+  Widget _buildMiniCheckbox(
+    String label,
+    bool value,
+    void Function(bool) onChanged,
+  ) {
     return GestureDetector(
       onTap: () => onChanged(!value),
       child: Row(
@@ -714,32 +830,45 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             ),
             child: value
                 ? const Center(
-                    child: Icon(Icons.check, size: 10, color: Colors.white),
+                    child: Icon(
+                      Icons.check,
+                      size: 10,
+                      color: Colors.white,
+                    ),
                   )
                 : const SizedBox.shrink(),
           ),
           const SizedBox(width: 3),
-          Text(label, style: const TextStyle(fontSize: 9)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 9, color: Colors.black),
+          ),
         ],
       ),
     );
   }
 
   // ---------------------------------------------------------------------------
-  // ZIEHUNGS-TAG CHIP
+  // ZIEHUNGSTAGE-CHIP
   // ---------------------------------------------------------------------------
   Widget _buildRadioChip(String label, int value) {
     final bool selected = _ziehungstage == value;
 
     return GestureDetector(
-      onTap: () => setState(() => _ziehungstage = value),
+      onTap: () {
+        setState(() => _ziehungstage = value);
+      },
       child: Container(
         margin: const EdgeInsets.only(right: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
           color: selected ? Colors.red : Colors.white,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.red, width: 1),
+          border: Border.all(
+            color: Colors.red,
+            width: 1,
+          ),
         ),
         child: Text(
           label,
@@ -754,7 +883,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ---------------------------------------------------------------------------
-  // LAUFZEIT CHIP
+  // LAUFZEIT-CHIP
   // ---------------------------------------------------------------------------
   Widget _buildLaufzeitChip(String label, int value) {
     final bool selected = _laufzeitWochen == value;
@@ -763,7 +892,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
       onTap: () => setState(() => _laufzeitWochen = value),
       child: Container(
         margin: const EdgeInsets.only(right: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
           color: selected ? Colors.red : Colors.white,
           borderRadius: BorderRadius.circular(4),
@@ -780,4 +910,4 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
       ),
     );
   }
- }
+}
