@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'losnummer_walzen_dialog.dart';
+import 'widgets/losnummer_legend.dart';
 
 /// Modus: Normalschein (max 6 Kreuze) oder Systemschein (mehr Kreuze)
 enum TicketMode { normal, system }
@@ -75,12 +76,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final orientation = media.orientation;
     const background = Color(0xFFFFF6C0); // leicht gelb wie Papier-Schein
-
-    // im Hochformat 2 Spalten, im Querformat 3
-    final int columns = orientation == Orientation.portrait ? 2 : 3;
 
     return Scaffold(
       backgroundColor: background,
@@ -95,8 +91,11 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: LayoutBuilder(
                   builder: (ctx, constraints) {
-                    final totalWidth = constraints.maxWidth;
+                    final orientation = MediaQuery.of(ctx).orientation;
+                    final int columns =
+                        orientation == Orientation.portrait ? 2 : 3;
                     const spacing = 8.0;
+                    final totalWidth = constraints.maxWidth;
                     final cardWidth =
                         (totalWidth - (columns - 1) * spacing) / columns;
 
@@ -191,10 +190,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     final int selectedCount = _selectedPerTip[tipIndex].length;
     final bool isSystem = _mode == TicketMode.system && selectedCount > 6;
     final int reihen =
-        isSystem ? _comb(selectedCount, maxNormal) : 0; // Anzahl Reihen
+        isSystem ? _comb(selectedCount, maxNormal) : 0; // Systemreihen
 
     const Color normalBorderColor = Color(0xFFC00000);
-
     final Color borderColor =
         isSystem ? Colors.red.shade900 : normalBorderColor;
     final Color fillColor =
@@ -358,7 +356,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
               child: Text(
                 selected ? 'X' : '$number',
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 11,
                   fontWeight:
                       selected ? FontWeight.bold : FontWeight.normal,
                   color: selected ? Colors.blue.shade900 : Colors.black,
@@ -505,8 +503,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   // ---------------------------------------------------------------------------
   Widget _buildBall(int? n) {
     return Container(
-      width: 18,
-      height: 18,
+      width: 20,
+      height: 20,
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
@@ -518,7 +516,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
               child: Text(
                 '$n',
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: Colors.red,
                 ),
@@ -534,12 +532,12 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     const redBar = Color(0xFFD00000);
 
     return Container(
-      height: 96,
+      height: 110,
       color: redBar,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
         children: [
-          // Losnummer + Buttons
+          // Losnummer + Buttons + Legende
           Expanded(
             flex: 3,
             child: Container(
@@ -632,6 +630,11 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 6),
+                  const LosnummerLegend(
+                    fontSize: 8,
+                    bracketHeight: 8,
                   ),
                 ],
               ),
