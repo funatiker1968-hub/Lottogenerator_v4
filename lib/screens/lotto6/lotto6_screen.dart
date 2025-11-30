@@ -107,7 +107,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                           return SizedBox(
                             width: cardWidth,
                             child: AspectRatio(
-                              aspectRatio: 5 / 4, // nah am Papierlayout
+                              aspectRatio: 4 / 5, // nah am Papierlayout
                               child: _buildTipCard(index),
                             ),
                           );
@@ -323,17 +323,21 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   // ---------------------------------------------------------------------------
   // GRID 1..49 (7×7)
   // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+  // GRID 1..49 (7×7) – Sichtbar, große Zahlen, beste Lesbarkeit
+  // ---------------------------------------------------------------------------
   Widget _buildNumberGrid(int tipIndex) {
     const gridBorderColor = Color(0xFFC00000);
 
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
       itemCount: maxNumber,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        crossAxisSpacing: 1,
-        mainAxisSpacing: 1,
-        childAspectRatio: 1.0,
+        crossAxisSpacing: 2,
+        mainAxisSpacing: 2,
+        childAspectRatio: 0.95, // größer, klarer, nicht gequetscht
       ),
       itemBuilder: (context, i) {
         final int number = i + 1;
@@ -341,25 +345,22 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
         final bool isHighlight = _highlightPerTip[tipIndex] == number;
 
         Color bg = Colors.white;
-        if (isHighlight) {
-          bg = const Color(0xFFFFF2CC); // leicht gelb beim Durchlauf
-        }
+        if (isHighlight) bg = const Color(0xFFFFE89C); // deutlicher gelb-Ton
 
         return GestureDetector(
           onTap: () => _onNumberTap(tipIndex, number, selected),
           child: Container(
             decoration: BoxDecoration(
-              color: bg,
-              border: Border.all(color: gridBorderColor, width: 0.8),
+              color: selected ? const Color(0xFFFFD6D6) : bg,
+              border: Border.all(color: gridBorderColor, width: 1.0),
             ),
             child: Center(
               child: Text(
                 selected ? 'X' : '$number',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight:
-                      selected ? FontWeight.bold : FontWeight.normal,
-                  color: selected ? Colors.blue.shade900 : Colors.black,
+                  fontSize: selected ? 15 : 13, // deutlich größer
+                  fontWeight: FontWeight.bold,
+                  color: selected ? Colors.red.shade900 : Colors.black,
                 ),
               ),
             ),
@@ -367,8 +368,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
         );
       },
     );
-  }
-
+  } 
   // ---------------------------------------------------------------------------
   // TAP AUF ZAHL
   // ---------------------------------------------------------------------------
@@ -501,38 +501,48 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   // ---------------------------------------------------------------------------
   // KUGEL FÜR FINALE ZAHLEN
   // ---------------------------------------------------------------------------
-  Widget _buildBall(int? n) {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFC00000), width: 1),
+Widget _buildBall(int? n) {
+  return Container(
+    width: 26,
+    height: 26,
+    decoration: BoxDecoration(
+      color: Colors.yellow.shade300,
+      shape: BoxShape.circle,
+      border: Border.all(
+        color: Colors.red.shade800,
+        width: 1.6,
       ),
-      child: n == null
-          ? const SizedBox.shrink()
-          : Center(
-              child: Text(
-                '$n',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
+      boxShadow: const [
+        BoxShadow(
+          color: Colors.black26,
+          blurRadius: 3,
+          offset: Offset(1, 2),
+        )
+      ],
+    ),
+    child: n == null
+        ? const SizedBox.shrink()
+        : Center(
+            child: Text(
+              '$n',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
               ),
             ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
+          ),
+  );
+}
+ 
+ // ---------------------------------------------------------------------------
   // UNTERE LEISTE: Losnummer, Zusatzspiele, Ziehungstage, Laufzeit
   // ---------------------------------------------------------------------------
   Widget _buildBottomBar() {
     const redBar = Color(0xFFD00000);
 
     return Container(
-      height: 110,
+     height: 120,
       color: redBar,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
