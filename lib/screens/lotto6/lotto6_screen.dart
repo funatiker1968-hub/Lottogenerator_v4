@@ -124,7 +124,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
   // KOPF: Titel + Normalschein/Systemschein
   // ---------------------------------------------------------------------------
   Widget _buildHeader() {
@@ -146,33 +146,29 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.red.shade700,
+              color: Colors.red,
               borderRadius: BorderRadius.circular(4),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<TicketMode>(
                 value: _mode,
-                dropdownColor: Colors.red.shade700,
+                dropdownColor: Colors.red,
                 iconEnabledColor: Colors.white,
                 items: const [
                   DropdownMenuItem(
                     value: TicketMode.normal,
-                    child: Text(
-                      'Normalschein',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
+                    child: Text('Normalschein',
+                        style: TextStyle(color: Colors.white, fontSize: 12)),
                   ),
                   DropdownMenuItem(
                     value: TicketMode.system,
-                    child: Text(
-                      'Systemschein',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
+                    child: Text('Systemschein',
+                        style: TextStyle(color: Colors.white, fontSize: 12)),
                   ),
                 ],
-                onChanged: (mode) {
-                  if (mode == null) return;
-                  setState(() => _mode = mode);
+                onChanged: (m) {
+                  if (m == null) return;
+                  setState(() => _mode = m);
                 },
               ),
             ),
@@ -181,7 +177,6 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
       ),
     );
   }
-
   // ---------------------------------------------------------------------------
   // EIN TIPP-FELD
   // ---------------------------------------------------------------------------
@@ -533,164 +528,122 @@ Widget _buildBall(int? n) {
           ),
   );
 }
- 
- // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
   // UNTERE LEISTE: Losnummer, Zusatzspiele, Ziehungstage, Laufzeit
   // ---------------------------------------------------------------------------
   Widget _buildBottomBar() {
     const redBar = Color(0xFFD00000);
 
     return Container(
-     height: 120,
+      height: 100,
       color: redBar,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-         // Losnummer + Buttons
+          // -------------------- LOSNUMMER + WALZE -------------------------
           Expanded(
-            flex: 3,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Losnummer',
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Beschriftung wie auf dem Papier-Schein
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD00000),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Losnummer / Spiel 77 / SUPER 6 / Superzahl',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: Colors.red,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  // Zeile mit Ziffern
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF6C0),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: Colors.red,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        for (int i = 0; i < _losnummer.length; i++)
-                          Container(
-                            width: 20,
-                            height: 26,
-                            margin:
-                                const EdgeInsets.symmetric(horizontal: 1.5),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(2),
-                              border: Border.all(
-                                color: Colors.black,
-                                width: 1.1,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                _losnummer[i],
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.black,
-                                ),
-                              ),
+                ),
+                const SizedBox(height: 4),
+
+                Row(
+                  children: [
+                    // 7 Ziffern
+                    for (int i = 0; i < _losnummer.length; i++)
+                      Container(
+                        width: 24,
+                        height: 28,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.black,
+                            width: 1.4,
+                          ),
+                          color: Colors.white,
+                        ),
+                        child: Center(
+                          child: Text(
+                            _losnummer[i],
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.black,
                             ),
                           ),
-                      ],
+                        ),
+                      ),
+
+                    const SizedBox(width: 6),
+
+                    // Zufällig
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(_generateNewLosnummer);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                      ),
+                      child: const Text('Zufällig', style: TextStyle(fontSize: 11)),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Zeile mit Zufällig / Walze
-                  Row(
-                    children: [
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(_generateNewLosnummer);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
+
+                    const SizedBox(width: 6),
+
+                    // Walze
+                    ElevatedButton(
+                      onPressed: () async {
+                        await showDialog<void>(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => LosnummerWalzenDialog(
+                            initialLosnummer: _losnummer,
+                            totalDuration: const Duration(milliseconds: 3500),
+                            holdDuration: const Duration(seconds: 5),
+                            onDone: (value) {
+                              setState(() => _losnummer = value);
+                            },
                           ),
-                        ),
-                        child: const Text(
-                          'Zufällig',
-                          style: TextStyle(fontSize: 11),
-                        ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 5),
                       ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () async {
-                          await showDialog<void>(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (_) => LosnummerWalzenDialog(
-                              initialLosnummer: _losnummer,
-                              totalDuration:
-                                  const Duration(milliseconds: 3500),
-                              holdDuration:
-                                  const Duration(milliseconds: 5000),
-                              onDone: (value) {
-                                setState(() {
-                                  _losnummer = value;
-                                });
-                              },
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                        ),
-                        child: const Text(
-                          'Walze',
-                          style: TextStyle(fontSize: 11),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  // Rote Beschriftungsbox wie auf dem Schein
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFE0E0),
-                      borderRadius: BorderRadius.circular(3),
-                      border: Border.all(color: Colors.red, width: 0.8),
+                      child: const Text('Walze', style: TextStyle(fontSize: 11)),
                     ),
-                    child: const Text(
-                      'Glücksspirale   |   Spiel 77   |   SUPER 6   |   Superzahl',
-                      style: TextStyle(
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.red,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
           ),
+
           const SizedBox(width: 6),
 
-          // Zusatzspiele
+          // -------------------- ZUSATZSPIELE -------------------------
           Expanded(
             flex: 3,
             child: Container(
@@ -698,6 +651,7 @@ Widget _buildBall(int? n) {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.black, width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -715,21 +669,12 @@ Widget _buildBall(int? n) {
                     spacing: 6,
                     runSpacing: 2,
                     children: [
-                      _buildMiniCheckbox(
-                        'Spiel 77',
-                        _spiel77,
-                        (v) => setState(() => _spiel77 = v),
-                      ),
-                      _buildMiniCheckbox(
-                        'SUPER 6',
-                        _super6,
-                        (v) => setState(() => _super6 = v),
-                      ),
-                      _buildMiniCheckbox(
-                        'Glücksspirale',
-                        _gluecksspirale,
-                        (v) => setState(() => _gluecksspirale = v),
-                      ),
+                      _buildMiniCheckbox('Spiel 77', _spiel77,
+                          (v) => setState(() => _spiel77 = v)),
+                      _buildMiniCheckbox('SUPER 6', _super6,
+                          (v) => setState(() => _super6 = v)),
+                      _buildMiniCheckbox('Glücksspirale', _gluecksspirale,
+                          (v) => setState(() => _gluecksspirale = v)),
                     ],
                   ),
                 ],
@@ -739,9 +684,9 @@ Widget _buildBall(int? n) {
 
           const SizedBox(width: 6),
 
-          // Ziehungstage + Laufzeit
+          // -------------------- ZIEHUNGSTAGE + LAUFZEIT -------------------------
           Expanded(
-            flex: 3,
+            flex: 4,
             child: Column(
               children: [
                 // Ziehungstage
@@ -751,6 +696,7 @@ Widget _buildBall(int? n) {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.black, width: 1),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -775,7 +721,9 @@ Widget _buildBall(int? n) {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 4),
+
                 // Laufzeit
                 Expanded(
                   child: Container(
@@ -783,6 +731,7 @@ Widget _buildBall(int? n) {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.black, width: 1),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -864,9 +813,7 @@ Widget _buildBall(int? n) {
     final bool selected = _ziehungstage == value;
 
     return GestureDetector(
-      onTap: () {
-        setState(() => _ziehungstage = value);
-      },
+      onTap: () => setState(() => _ziehungstage = value),
       child: Container(
         margin: const EdgeInsets.only(right: 4),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
