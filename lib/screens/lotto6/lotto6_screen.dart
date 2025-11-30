@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'losnummer_walzen_dialog.dart';
-import 'widgets/losnummer_legend.dart';
 
 /// Modus: Normalschein (max 6 Kreuze) oder Systemschein (mehr Kreuze)
 enum TicketMode { normal, system }
@@ -547,7 +546,7 @@ Widget _buildBall(int? n) {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
         children: [
-          // Losnummer + Buttons + Legende
+         // Losnummer + Buttons
           Expanded(
             flex: 3,
             child: Container(
@@ -568,32 +567,52 @@ Widget _buildBall(int? n) {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      for (int i = 0; i < _losnummer.length; i++)
-                        Container(
-                          width: 18,
-                          height: 24,
-                          margin:
-                              const EdgeInsets.symmetric(horizontal: 2),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.black,
-                              width: 1,
+                  // Zeile mit Ziffern
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF6C0),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: Colors.red,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        for (int i = 0; i < _losnummer.length; i++)
+                          Container(
+                            width: 20,
+                            height: 26,
+                            margin:
+                                const EdgeInsets.symmetric(horizontal: 1.5),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(2),
+                              border: Border.all(
+                                color: Colors.black,
+                                width: 1.1,
+                              ),
                             ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              _losnummer[i],
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
+                            child: Center(
+                              child: Text(
+                                _losnummer[i],
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.black,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      const SizedBox(width: 6),
-                      // Zufällig-Button (direkt)
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // Zeile mit Zufällig / Walze
+                  Row(
+                    children: [
                       ElevatedButton(
                         onPressed: () {
                           setState(_generateNewLosnummer);
@@ -602,15 +621,16 @@ Widget _buildBall(int? n) {
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                         ),
                         child: const Text(
                           'Zufällig',
                           style: TextStyle(fontSize: 11),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      // Walzen-Button (Dialog)
+                      const SizedBox(width: 8),
                       ElevatedButton(
                         onPressed: () async {
                           await showDialog<void>(
@@ -620,6 +640,8 @@ Widget _buildBall(int? n) {
                               initialLosnummer: _losnummer,
                               totalDuration:
                                   const Duration(milliseconds: 3500),
+                              holdDuration:
+                                  const Duration(milliseconds: 5000),
                               onDone: (value) {
                                 setState(() {
                                   _losnummer = value;
@@ -632,7 +654,9 @@ Widget _buildBall(int? n) {
                           backgroundColor: Colors.orange,
                           foregroundColor: Colors.black,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                         ),
                         child: const Text(
                           'Walze',
@@ -641,16 +665,29 @@ Widget _buildBall(int? n) {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  const LosnummerLegend(
-                    fontSize: 8,
-                    bracketHeight: 8,
+                  const SizedBox(height: 3),
+                  // Rote Beschriftungsbox wie auf dem Schein
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFE0E0),
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(color: Colors.red, width: 0.8),
+                    ),
+                    child: const Text(
+                      'Glücksspirale   |   Spiel 77   |   SUPER 6   |   Superzahl',
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.red,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-
           const SizedBox(width: 6),
 
           // Zusatzspiele
