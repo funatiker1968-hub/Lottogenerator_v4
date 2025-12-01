@@ -517,66 +517,6 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     }
   }
 
-// ---------------------------------------------------------------------------
-// QUICKTIP LEISTE (unter den Tippfeldern, über der roten Leiste)
-// ---------------------------------------------------------------------------
-Widget _buildQuickBar() {
-  return Container(
-    height: 44,
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    decoration: const BoxDecoration(
-      color: Color(0xFFE0E0E0), // hellgrau wie Original
-      border: Border(
-        top: BorderSide(color: Colors.black54, width: 1),
-        bottom: BorderSide(color: Colors.black54, width: 1),
-      ),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // ↦ Teilnahme (funktioniert NICHT, aber Button existiert)
-        ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            side: const BorderSide(color: Colors.black, width: 1),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          ),
-          child: const Text("Teilnahme", style: TextStyle(fontSize: 12)),
-        ),
-
-        // ↦ Quicktipp
-        ElevatedButton(
-          onPressed: () async {
-            for (int i = 0; i < tipCount; i++) {
-              await _generateTip(i);
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          ),
-          child: const Text("Quicktipp", style: TextStyle(fontSize: 12)),
-        ),
-
-        // ↦ Alles löschen
-        ElevatedButton(
-          onPressed: _clearAllTips,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            side: const BorderSide(color: Colors.black, width: 1),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          ),
-          child: const Text("Löschen", style: TextStyle(fontSize: 12)),
-        ),
-      ],
-    ),
-  );
-}
- 
   // ---------------------------------------------------------------------------
   // KUGEL FÜR FINALE ZAHLEN
   // ---------------------------------------------------------------------------
@@ -622,126 +562,140 @@ Widget _buildQuickBar() {
   // ---------------------------------------------------------------------------
   // UNTERE LEISTE: Losnummer, Zusatzspiele, Ziehungstage, Laufzeit
   // ---------------------------------------------------------------------------
-  Widget _buildBottomBar() {
-const redBar = Color(0xFFD00000);
+Widget _buildBottomBar() {
+  const redBar = Color(0xFFD00000);
 
   return Container(
     color: redBar,
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ---------------------- LOSNUMMERN BLOCK --------------------------
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.black, width: 1),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ----------------- ÜBERSCHRIFT "LOSNUMMER" -----------------
-              const Text(
-                'LOSNUMMER',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 6),
-
-              // -------------------- GLÜCKSSPIRALE -----------------------
-              const Text(
-                'GLÜCKSSPIRALE',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 2),
-
-              // 7 Ziffern, Stelle 7 rot hinterlegt
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(7, (i) {
-                  final bool isSuperzahl = (i == 6);
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    width: 30,
-                    height: 34,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isSuperzahl ? Colors.red.shade700 : Colors.white,
-                      border: Border.all(color: Colors.black, width: 1.4),
-                    ),
-                    child: Text(
-                      _losnummer[i],
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: isSuperzahl ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-
-              const SizedBox(height: 4),
-
-              // ----------------------- SUPER 6 ---------------------------
-              const Text(
-                '       └────── SUPER 6 ──────┘',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 2),
-
-              // ----------------------- SPIEL 77 --------------------------
-              const Text(
-                'SPIEL 77',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 4),
-
-              // --------------------- SUPERSCHIFT -------------------------
-              const Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  'Superzahl',
-                  style: TextStyle(
-                    color: Color(0xFFB00000),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
+        const Text(
+          "LO S N U M M E R",
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            color: Colors.black,
           ),
         ),
-
         const SizedBox(height: 8),
 
-        // ---------------------- QUICKTIP LEISTE --------------------------
-        _buildQuickBar(),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(7, (i) {
+            final isSuper6Red = i == 6;
+
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: 34,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSuper6Red ? Colors.red.shade900 : Colors.white,
+                border: Border.all(color: Colors.black, width: 1),
+              ),
+              child: Text(
+                _losnummer[i].toString(),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isSuper6Red ? Colors.white : Colors.black,
+                ),
+              ),
+            );
+          }),
+        ),
+
+        const SizedBox(height: 10),
+
+        Column(
+          children: const [
+            Text(
+              "‾‾ GLÜCKSSPIRALE ‾‾",
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              "__ SUPER 6 __",
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              "——— SPIEL 77 ——",
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+
+const SizedBox(height: 6),
+
+        const Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            "Superzahl",
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
+            ),
+          ),
+        ),
       ],
     ),
   );
-}  
+}
+
+// ---------------------- QUICKTIP LEISTE --------------------------
+Widget _buildQuickBar() {
+  return Container(
+    height: 44,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: const BoxDecoration(
+      color: Color(0xFFE0E0E0),
+        border: Border(
+        top: BorderSide(color: Colors.black54, width: 1),
+        bottom: BorderSide(color: Colors.black54, width: 1),
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        ElevatedButton(
+          onPressed: () {},
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            side: BorderSide(color: Colors.black, width: 1),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          ),
+          child: Text("Teilnahme", style: TextStyle(fontSize: 12)),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            for (int i = 0; i < tipCount; i++) {
+              await _generateTip(i);
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          ),
+          child: Text("Quicktipp", style: TextStyle(fontSize: 12)),
+        ),
+        ElevatedButton(
+          onPressed: _clearAllTips,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            side: BorderSide(color: Colors.black, width: 1),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          ),
+          child: Text("Löschen", style: TextStyle(fontSize: 12)),
+        ),
+      ],
+    ),
+  );
+}
   // ---------------------------------------------------------------------------
   // MINI-CHECKBOXEN
   // ---------------------------------------------------------------------------
