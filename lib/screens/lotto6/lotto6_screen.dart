@@ -11,7 +11,11 @@ class Lotto6Screen extends StatefulWidget {
 class _Lotto6ScreenState extends State<Lotto6Screen> {
   static const int tipCount = 12;
   static const int maxNumber = 49;
-  static const int maxMarksPerTip = 6;
+  static const int maxMarksPerTipNormal = 6;
+
+  /// System-Modus je Tipp:
+  /// 0 = Normalschein, 7..12 = System 7..12
+  late final List<int> _systemMode;
 
   /// Tipps – gewählte Zahlen pro Tippfeld
   late final List<Set<int>> _selectedPerTip;
@@ -32,15 +36,42 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
   final Random _rng = Random();
 
+  /// System-Reihen pro Systemtyp (echte 6aus49-Kombinationen)
+  /// 0 = Normal (1 Reihe), 7 = 7 Reihen, 8 = 28, 9 = 84, 10 = 210, 11 = 462, 12 = 924
+  static const Map<int, int> _systemReihen = {
+    0: 1,   // Normal
+    7: 7,
+    8: 28,
+    9: 84,
+    10: 210,
+    11: 462,
+    12: 924,
+  };
+
   @override
   void initState() {
     super.initState();
     _selectedPerTip = List.generate(tipCount, (_) => <int>{});
+    _systemMode = List<int>.filled(tipCount, 0); // alle erstmal Normalschein
     _generateNewLosnummer();
   }
 
   void _generateNewLosnummer() {
     _losnummer = List.generate(7, (_) => _rng.nextInt(10)).join();
+  }
+
+  int _maxMarksForTip(int tipIndex) {
+    final mode = _systemMode[tipIndex];
+    if (mode == 0) {
+      return maxMarksPerTipNormal;
+    }
+    // System N → max N Zahlen
+    return mode;
+  }
+
+  int _rowsForTip(int tipIndex) {
+    final mode = _systemMode[tipIndex];
+    return _systemReihen[mode] ?? 1;
   }
 
   @override
@@ -131,10 +162,16 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ---------------------------------------------------------------------------
-  // EIN TIPP MIT RASTER
+  // EIN TIPP MIT RASTER + DROPDOWN FÜR SYSTEMMODUS
   // ---------------------------------------------------------------------------
   Widget _buildTipCard(int tipNumber) {
     final int tipIndex = tipNumber - 1;
+    final int mode = _systemMode[tipIndex];
+
+    String _modeLabel(int m) {
+      if (m == 0) return 'Normal';
+      return 'System $m';
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -144,22 +181,84 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
       ),
       child: Column(
         children: [
-          // Titel
+          // Kopfzeile: "Tipp X" + Dropdown (Normal / System 7–12)
           Container(
             height: 24,
-            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: Colors.red.shade700, width: 1.4),
               ),
             ),
-            child: Text(
-              'Tipp $tipNumber',
-              style: TextStyle(
-                color: Colors.red.shade700,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
+            child: Row(
+              children: [
+                Text(
+                  'Tipp $tipNumber',
+                  style: TextStyle(
+                    color: Colors.red.shade700,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: mode,
+                    isDense: true,
+                    iconSize: 16,
+                    dropdownColor: Colors.white,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: Colors.black,
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 0,
+                        child: Text('Normal'),
+                      ),
+                      DropdownMenuItem(
+                        value: 7,
+                        child: Text('System 7'),
+                      ),
+                      DropdownMenuItem(
+                        value: 8,
+                        child: Text('System 8'),
+                      ),
+                      DropdownMenuItem(
+                        value: 9,
+                        child: Text('System 9'),
+                      ),
+                      DropdownMenuItem(
+                        value: 10,
+                        child: Text('System 10'),
+                      ),
+                      DropdownMenuItem(
+                        value: 11,
+                        child: Text('System 11'),
+                      ),
+                      DropdownMenuItem(
+                        value: 12,
+                        child: Text('System 12'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _systemMode[tipIndex] = value;
+                        // Wenn zu viele Kreuze für neuen Modus → einkürzen
+                        final limit = _maxMarksForTip(tipIndex);
+                        if (_selectedPerTip[tipIndex].length > limit) {
+                          final sorted = _selectedPerTip[tipIndex].toList()
+                            ..sort();
+                          _selectedPerTip[tipIndex]
+                            ..clear()
+                            ..addAll(sorted.take(limit));
+                        }
+                      });
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -236,7 +335,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
         return;
       }
 
-      if (set.length >= maxMarksPerTip) return;
+      final int limit = _maxMarksForTip(tipIndex);
+      if (set.length >= limit) return;
 
       set.add(number);
     });
@@ -247,7 +347,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   // ---------------------------------------------------------------------------
   void _generateRandomTip(int tipIndex) {
     final set = <int>{};
-    while (set.length < maxMarksPerTip) {
+    final limit = _maxMarksForTip(tipIndex);
+    while (set.length < limit) {
       set.add(_rng.nextInt(maxNumber) + 1);
     }
     _selectedPerTip[tipIndex]
@@ -407,7 +508,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                 ),
                 child: const Text(
                   'Zufällig',
@@ -539,19 +642,23 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ---------------------------------------------------------------------------
-  // EINSATZ-BERECHNUNG (realistische Gebühren)
+  // EINSATZ-BERECHNUNG (echte Systempreise)
   // ---------------------------------------------------------------------------
   double _calculateStake() {
-    final int tipAnzahl = _activeTipCount();
-
-    // Preise pro Ziehung (Stand: 6aus49, ohne Gewähr – simuliert)
-    const double preisProTipp = 1.20;
+    // Grundpreis aus allen nicht-leeren Tipps, unter Berücksichtigung System
+    const double preisProReihe = 1.20;
     const double preisSpiel77 = 2.50;
     const double preisSuper6 = 1.25;
     const double preisGluecksspirale = 5.00;
     const double bearbeitungsGebuehr = 0.60;
 
-    double grundpreis = tipAnzahl * preisProTipp;
+    double grundpreis = 0.0;
+
+    for (int i = 0; i < tipCount; i++) {
+      if (_selectedPerTip[i].isEmpty) continue;
+      final rows = _rowsForTip(i);
+      grundpreis += rows * preisProReihe;
+    }
 
     if (_spiel77) grundpreis += preisSpiel77;
     if (_super6) grundpreis += preisSuper6;
