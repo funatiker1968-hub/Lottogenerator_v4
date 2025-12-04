@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:flutter/material.dart';
 
 class Lotto6Screen extends StatefulWidget {
   const Lotto6Screen({super.key});
@@ -13,8 +13,22 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   static const int maxNumber = 49;
   static const int maxMarksPerTip = 6;
 
-  /// Merkt ausgewählte Zahlen je Tippfeld
+  /// Tipps – gewählte Zahlen pro Tippfeld
   late final List<Set<int>> _selectedPerTip;
+
+  /// Zusatzlotterien
+  bool _spiel77 = false;
+  bool _super6 = false;
+  bool _gluecksspirale = false;
+
+  /// Ziehungstage: 0 = Mi, 1 = Sa, 2 = Mi+Sa
+  int _ziehungstage = 0;
+
+  /// Laufzeit (Wochen)
+  int _laufzeitWochen = 1;
+
+  /// Losnummer (7-stellig)
+  late String _losnummer;
 
   final Random _rng = Random();
 
@@ -22,6 +36,11 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   void initState() {
     super.initState();
     _selectedPerTip = List.generate(tipCount, (_) => <int>{});
+    _generateNewLosnummer();
+  }
+
+  void _generateNewLosnummer() {
+    _losnummer = List.generate(7, (_) => _rng.nextInt(10)).join();
   }
 
   @override
@@ -35,6 +54,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             const SizedBox(height: 6),
             Expanded(child: _buildFullSchein()),
             _buildQuickBar(),
+            _buildBottomBar(),
           ],
         ),
       ),
@@ -52,7 +72,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       alignment: Alignment.centerLeft,
       child: const Text(
-        'LOTTO 6aus49',
+        'LOTTOZAHLEN-GENERATOR',
         style: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w900,
@@ -134,7 +154,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
               ),
             ),
             child: Text(
-              "Tipp $tipNumber",
+              'Tipp $tipNumber',
               style: TextStyle(
                 color: Colors.red.shade700,
                 fontSize: 13,
@@ -184,11 +204,12 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
           children: [
             Center(
               child: Text(
-                "$number",
+                '$number',
                 style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w500,
-                  color: isSelected ? Colors.black.withOpacity(0.8) : Colors.black,
+                  color:
+                      isSelected ? Colors.black.withOpacity(0.8) : Colors.black,
                 ),
               ),
             ),
@@ -222,15 +243,13 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ---------------------------------------------------------------------------
-  // QUICKTIPP-FUNKTION (Block 2)
+  // QUICKTIPP-FUNKTION
   // ---------------------------------------------------------------------------
   void _generateRandomTip(int tipIndex) {
     final set = <int>{};
-
     while (set.length < maxMarksPerTip) {
       set.add(_rng.nextInt(maxNumber) + 1);
     }
-
     _selectedPerTip[tipIndex]
       ..clear()
       ..addAll(set);
@@ -238,6 +257,10 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
   void _clearTip(int tipIndex) {
     _selectedPerTip[tipIndex].clear();
+  }
+
+  int _activeTipCount() {
+    return _selectedPerTip.where((s) => s.isNotEmpty).length;
   }
 
   // ---------------------------------------------------------------------------
@@ -257,7 +280,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _qbtn("Teilnahme"),
+          _qbtn('Teilnahme'),
           ElevatedButton(
             onPressed: () {
               setState(() {
@@ -269,9 +292,10 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             ),
-            child: const Text("Quicktipp", style: TextStyle(fontSize: 12)),
+            child: const Text('Quicktipp', style: TextStyle(fontSize: 12)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -285,9 +309,10 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
               backgroundColor: Colors.white,
               foregroundColor: Colors.black,
               side: const BorderSide(color: Colors.black),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             ),
-            child: const Text("Löschen", style: TextStyle(fontSize: 12)),
+            child: const Text('Löschen', style: TextStyle(fontSize: 12)),
           ),
         ],
       ),
@@ -304,6 +329,342 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
       child: Text(text, style: const TextStyle(fontSize: 12)),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // UNTERE FUNKTIONS-LEISTE (Losnummer, Zusatzspiele, Ziehungstage, Einsatz)
+  // ---------------------------------------------------------------------------
+  Widget _buildBottomBar() {
+    const redBar = Color(0xFFD00000);
+
+    final double einsatz = _calculateStake();
+
+    return Container(
+      color: redBar,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Row(
+        children: [
+          Expanded(child: _buildLosnummerBox()),
+          const SizedBox(width: 6),
+          Expanded(child: _buildZusatzspieleBox()),
+          const SizedBox(width: 6),
+          Expanded(child: _buildZiehungBox()),
+          const SizedBox(width: 6),
+          Expanded(child: _buildLaufzeitUndEinsatzBox(einsatz)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLosnummerBox() {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.black, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Losnummer',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              for (int i = 0; i < _losnummer.length; i++)
+                Container(
+                  width: 18,
+                  height: 24,
+                  margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black, width: 1),
+                    color: Colors.white,
+                  ),
+                  child: Center(
+                    child: Text(
+                      _losnummer[i],
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 6),
+              ElevatedButton(
+                onPressed: () {
+                  setState(_generateNewLosnummer);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                ),
+                child: const Text(
+                  'Zufällig',
+                  style: TextStyle(fontSize: 11),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildZusatzspieleBox() {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.black, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Zusatzspiele',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
+            ),
+          ),
+          const SizedBox(height: 2),
+          _buildMiniCheckbox(
+            'Spiel 77',
+            _spiel77,
+            (v) => setState(() => _spiel77 = v),
+          ),
+          const SizedBox(height: 2),
+          _buildMiniCheckbox(
+            'Super 6',
+            _super6,
+            (v) => setState(() => _super6 = v),
+          ),
+          const SizedBox(height: 2),
+          _buildMiniCheckbox(
+            'GlücksSpirale',
+            _gluecksspirale,
+            (v) => setState(() => _gluecksspirale = v),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildZiehungBox() {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.black, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ziehungstage',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              _buildRadioChip('Mi', 0),
+              _buildRadioChip('Sa', 1),
+              _buildRadioChip('Mi+Sa', 2),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLaufzeitUndEinsatzBox(double einsatz) {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.black, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Laufzeit & Einsatz',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              for (final w in [1, 2, 3, 4, 5])
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: _buildLaufzeitChip('$w W', w),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Spieleinsatz: ${einsatz.toStringAsFixed(2)} €',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // EINSATZ-BERECHNUNG (realistische Gebühren)
+  // ---------------------------------------------------------------------------
+  double _calculateStake() {
+    final int tipAnzahl = _activeTipCount();
+
+    // Preise pro Ziehung (Stand: 6aus49, ohne Gewähr – simuliert)
+    const double preisProTipp = 1.20;
+    const double preisSpiel77 = 2.50;
+    const double preisSuper6 = 1.25;
+    const double preisGluecksspirale = 5.00;
+    const double bearbeitungsGebuehr = 0.60;
+
+    double grundpreis = tipAnzahl * preisProTipp;
+
+    if (_spiel77) grundpreis += preisSpiel77;
+    if (_super6) grundpreis += preisSuper6;
+    if (_gluecksspirale) grundpreis += preisGluecksspirale;
+
+    // Anzahl Ziehungen pro Woche
+    final int ziehungenProWoche = _ziehungstage == 2 ? 2 : 1;
+
+    // Gesamteinsatz
+    double gesamt =
+        grundpreis * ziehungenProWoche * _laufzeitWochen + bearbeitungsGebuehr;
+
+    return gesamt;
+  }
+
+  // ---------------------------------------------------------------------------
+  // MINI-CHECKBOXEN
+  // ---------------------------------------------------------------------------
+  Widget _buildMiniCheckbox(
+    String label,
+    bool value,
+    void Function(bool) onChanged,
+  ) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(2),
+              border: Border.all(color: Colors.black, width: 1),
+              color: value ? Colors.red : Colors.white,
+            ),
+            child: value
+                ? const Center(
+                    child: Icon(
+                      Icons.check,
+                      size: 10,
+                      color: Colors.white,
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 9, color: Colors.black),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // ZIEHUNGSTAGE-CHIP
+  // ---------------------------------------------------------------------------
+  Widget _buildRadioChip(String label, int value) {
+    final bool selected = _ziehungstage == value;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() => _ziehungstage = value);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: selected ? Colors.red : Colors.white,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: Colors.red,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            color: selected ? Colors.white : Colors.red,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // LAUFZEIT-CHIP
+  // ---------------------------------------------------------------------------
+  Widget _buildLaufzeitChip(String label, int value) {
+    final bool selected = _laufzeitWochen == value;
+
+    return GestureDetector(
+      onTap: () => setState(() => _laufzeitWochen = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: selected ? Colors.red : Colors.white,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.red, width: 1),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            color: selected ? Colors.white : Colors.red,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -323,9 +684,15 @@ class _CrossPainter extends CustomPainter {
     final double pad = size.shortestSide * 0.15;
 
     canvas.drawLine(
-        Offset(pad, pad), Offset(size.width - pad, size.height - pad), paint);
+      Offset(pad, pad),
+      Offset(size.width - pad, size.height - pad),
+      paint,
+    );
     canvas.drawLine(
-        Offset(size.width - pad, pad), Offset(pad, size.height - pad), paint);
+      Offset(size.width - pad, pad),
+      Offset(pad, size.height - pad),
+      paint,
+    );
   }
 
   @override
