@@ -152,7 +152,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
                   mainAxisSpacing: 1,
-                  crossSpacing: 1,
+                  crossAxisSpacing: 1,
                   childAspectRatio: 1.0,
                 ),
                 itemCount: maxNumber,
