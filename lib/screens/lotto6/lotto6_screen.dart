@@ -453,133 +453,138 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-  Widget _buildLosnummerBox() {
-    const darkRed = Color(0xFFB00000);
-
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.black, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Losnummer',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.red,
-            ),
+Widget _buildLosnummerBox() {
+  return Container(
+    padding: const EdgeInsets.all(6),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(4),
+      border: Border.all(color: Colors.black, width: 1),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Losnummer',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: Colors.red,
           ),
-          const SizedBox(height: 2),
-          // Beschriftungen wie auf dem Originalschein
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Text(
-                '‾‾ GLÜCKSSPIRALE ‾‾',
-                textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+
+        // Beschriftungen oben (GS + Super6)
+        Center(
+          child: Column(
+            children: [
+              const Text(
+                'GLÜCKSSPIRALE',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
                 ),
               ),
-              Text(
-                '__ SUPER 6 __',
-                textAlign: TextAlign.center,
+              Container(
+                height: 1,
+                width: 150,
+                color: Colors.black,
+                margin: const EdgeInsets.only(bottom: 2),
+              ),
+              const Text(
+                'SUPER 6',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
                 ),
               ),
-              Text(
-                '——— SPIEL 77 ——',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+              Container(
+                height: 1,
+                width: 130,
+                color: Colors.black,
+                margin: const EdgeInsets.only(bottom: 6),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              // Ziffern 1–7, letzte Stelle weiß auf dunkelrot
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    for (int i = 0; i < _losnummer.length; i++)
-                      Container(
-                        width: 18,
-                        height: 24,
-                        margin:
-                            const EdgeInsets.symmetric(horizontal: 1.5),
-                        decoration: BoxDecoration(
-                          border:
-                              Border.all(color: Colors.black, width: 1),
-                          color: i == 6 ? darkRed : Colors.white,
-                        ),
-                        child: Center(
-                          child: Text(
-                            _losnummer[i],
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: i == 6
-                                  ? Colors.white
-                                  : Colors.black,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+        ),
+
+        Row(
+          children: [
+            // Zufällig Button links
+            ElevatedButton(
+              onPressed: () => setState(_generateNewLosnummer),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
               ),
-              const SizedBox(width: 4),
-              ElevatedButton(
-                onPressed: () {
-                  setState(_generateNewLosnummer);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+              child: const Text(
+                'Zufällig',
+                style: TextStyle(fontSize: 11),
+              ),
+            ),
+            const SizedBox(width: 6),
+
+            // 7 Ziffern
+            for (int i = 0; i < 7; i++)
+              Container(
+                width: 22,
+                height: 28,
+                margin: const EdgeInsets.symmetric(horizontal: 1),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black, width: 1),
+                  color: i == 6 ? Colors.red : Colors.white,
+                ),
+                child: Center(
+                  child: Text(
+                    _losnummer[i],
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: i == 6 ? Colors.white : Colors.black,
+                    ),
                   ),
                 ),
-                child: const Text(
-                  'Zufällig',
-                  style: TextStyle(fontSize: 11),
+              ),
+          ],
+        ),
+
+        const SizedBox(height: 4),
+
+        // Untere Linien & Beschriftung Spiel77 + Superzahl
+        Center(
+          child: Column(
+            children: [
+              Container(
+                height: 1,
+                width: 150,
+                color: Colors.black,
+                margin: const EdgeInsets.only(bottom: 2),
+              ),
+              const Text(
+                'Spiel77',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'Superzahl',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          const Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              'Superzahl',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+        ),
+      ],
+    ),
+  );
+}
   Widget _buildZusatzspieleBox() {
     return Container(
       padding: const EdgeInsets.all(6),
