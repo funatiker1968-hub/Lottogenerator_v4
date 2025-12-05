@@ -39,7 +39,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   /// System-Reihen pro Systemtyp (echte 6aus49-Kombinationen)
   /// 0 = Normal (1 Reihe), 7 = 7 Reihen, 8 = 28, 9 = 84, 10 = 210, 11 = 462, 12 = 924
   static const Map<int, int> _systemReihen = {
-    0: 1,   // Normal
+    0: 1, // Normal
     7: 7,
     8: 28,
     9: 84,
@@ -167,11 +167,6 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   Widget _buildTipCard(int tipNumber) {
     final int tipIndex = tipNumber - 1;
     final int mode = _systemMode[tipIndex];
-
-    String _modeLabel(int m) {
-      if (m == 0) return 'Normal';
-      return 'System $m';
-    }
 
     return Container(
       decoration: BoxDecoration(
@@ -443,22 +438,24 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
     return Container(
       color: redBar,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
-          Expanded(child: _buildLosnummerBox()),
+          Expanded(flex: 3, child: _buildLosnummerBox()),
           const SizedBox(width: 6),
-          Expanded(child: _buildZusatzspieleBox()),
+          Expanded(flex: 2, child: _buildZusatzspieleBox()),
           const SizedBox(width: 6),
-          Expanded(child: _buildZiehungBox()),
+          Expanded(flex: 2, child: _buildZiehungBox()),
           const SizedBox(width: 6),
-          Expanded(child: _buildLaufzeitUndEinsatzBox(einsatz)),
+          Expanded(flex: 3, child: _buildLaufzeitUndEinsatzBox(einsatz)),
         ],
       ),
     );
   }
 
   Widget _buildLosnummerBox() {
+    const darkRed = Color(0xFFB00000);
+
     return Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
@@ -467,7 +464,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
         border: Border.all(color: Colors.black, width: 1),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
             'Losnummer',
@@ -477,29 +474,76 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
               color: Colors.red,
             ),
           ),
+          const SizedBox(height: 2),
+          // Beschriftungen wie auf dem Originalschein
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Text(
+                '‾‾ GLÜCKSSPIRALE ‾‾',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              Text(
+                '__ SUPER 6 __',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              Text(
+                '——— SPIEL 77 ——',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Row(
             children: [
-              for (int i = 0; i < _losnummer.length; i++)
-                Container(
-                  width: 18,
-                  height: 24,
-                  margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black, width: 1),
-                    color: Colors.white,
-                  ),
-                  child: Center(
-                    child: Text(
-                      _losnummer[i],
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
+              // Ziffern 1–7, letzte Stelle weiß auf dunkelrot
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    for (int i = 0; i < _losnummer.length; i++)
+                      Container(
+                        width: 18,
+                        height: 24,
+                        margin:
+                            const EdgeInsets.symmetric(horizontal: 1.5),
+                        decoration: BoxDecoration(
+                          border:
+                              Border.all(color: Colors.black, width: 1),
+                          color: i == 6 ? darkRed : Colors.white,
+                        ),
+                        child: Center(
+                          child: Text(
+                            _losnummer[i],
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: i == 6
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                  ],
                 ),
-              const SizedBox(width: 6),
+              ),
+              const SizedBox(width: 4),
               ElevatedButton(
                 onPressed: () {
                   setState(_generateNewLosnummer);
@@ -518,6 +562,18 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 4),
+          const Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Superzahl',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
           ),
         ],
       ),
