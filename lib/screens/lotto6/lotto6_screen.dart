@@ -20,6 +20,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   /// Tipps – gewählte Zahlen pro Tippfeld
   late final List<Set<int>> _selectedPerTip;
 
+  /// Favoriten je Tippfeld (Subset von _selectedPerTip)
+  late final List<Set<int>> _favoritePerTip;
+
   /// Zusatzlotterien
   bool _spiel77 = false;
   bool _super6 = false;
@@ -52,6 +55,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   void initState() {
     super.initState();
     _selectedPerTip = List.generate(tipCount, (_) => <int>{});
+    _favoritePerTip = List.generate(tipCount, (_) => <int>{});
     _systemMode = List<int>.filled(tipCount, 0); // alle erstmal Normalschein
     _generateNewLosnummer();
   }
@@ -162,7 +166,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ---------------------------------------------------------------------------
-  // EIN TIPP MIT RASTER + DROPDOWN FÜR SYSTEMMODUS
+  // EIN TIPP MIT RASTER + DROPDOWN FÜR SYSTEMMODUS + ZAHLENLEISTE UNTEN
   // ---------------------------------------------------------------------------
   Widget _buildTipCard(int tipNumber) {
     final int tipIndex = tipNumber - 1;
@@ -249,6 +253,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                             ..clear()
                             ..addAll(sorted.take(limit));
                         }
+                        // Favoriten auf neue Auswahl beschränken
+                        _favoritePerTip[tipIndex]
+                            .removeWhere((n) => !_selectedPerTip[tipIndex].contains(n));
                       });
                     },
                   ),
@@ -273,22 +280,71 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                 itemBuilder: (context, i) {
                   final number = i + 1;
                   final isSelected = _selectedPerTip[tipIndex].contains(number);
-                  return _buildNumberCell(tipIndex, number, isSelected);
+                  final isFavorite = _favoritePerTip[tipIndex].contains(number);
+                  return _buildNumberCell(
+                    tipIndex,
+                    number,
+                    isSelected,
+                    isFavorite,
+                  );
                 },
               ),
             ),
           ),
+
+          const SizedBox(height: 2),
+          _buildTipFooterNumbers(tipIndex),
+          const SizedBox(height: 2),
         ],
       ),
     );
   }
 
   // ---------------------------------------------------------------------------
-  // ZAHLENFELD + HAND-KREUZ
+  // ZAHLEN-LEISTE UNTER DEM RASTER (sortiert, Favoriten rot)
   // ---------------------------------------------------------------------------
-  Widget _buildNumberCell(int tipIndex, int number, bool isSelected) {
+  Widget _buildTipFooterNumbers(int tipIndex) {
+    final selected = _selectedPerTip[tipIndex].toList()..sort();
+    final fav = _favoritePerTip[tipIndex];
+
+    if (selected.isEmpty) {
+      return const SizedBox(height: 16);
+    }
+
+    return SizedBox(
+      height: 16,
+      child: FittedBox(
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (final n in selected)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Text(
+                  '$n',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: fav.contains(n) ? Colors.red : Colors.black,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // ZAHLENFELD + HAND-KREUZ (normal blau, Favorit rot)
+  // ---------------------------------------------------------------------------
+  Widget _buildNumberCell(
+      int tipIndex, int number, bool isSelected, bool isFavorite) {
     return GestureDetector(
       onTap: () => _onNumberTap(tipIndex, number, isSelected),
+      onLongPress: () =>
+          _onNumberLongPress(tipIndex, number, isSelected, isFavorite),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -309,7 +365,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             ),
             if (isSelected)
               CustomPaint(
-                painter: _CrossPainter(),
+                painter: _CrossPainter(
+                  isFavorite ? Colors.red : Colors.blue.shade900,
+                ),
                 size: Size.infinite,
               ),
           ],
@@ -319,14 +377,16 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ---------------------------------------------------------------------------
-  // TAP-LOGIK
+  // TAP-LOGIK (normales An-/Abwählen, Favoriten werden mit entfernt)
   // ---------------------------------------------------------------------------
   void _onNumberTap(int tipIndex, int number, bool alreadySelected) {
     setState(() {
       final set = _selectedPerTip[tipIndex];
+      final favSet = _favoritePerTip[tipIndex];
 
       if (alreadySelected) {
         set.remove(number);
+        favSet.remove(number);
         return;
       }
 
@@ -338,23 +398,78 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ---------------------------------------------------------------------------
-  // QUICKTIPP-FUNKTION
+  // LONG-PRESS: Favorit an/aus (überlebt Quicktipp)
+  // ---------------------------------------------------------------------------
+  void _onNumberLongPress(
+    int tipIndex,
+    int number,
+    bool alreadySelected,
+    bool isFavorite,
+  ) {
+    setState(() {
+      final selSet = _selectedPerTip[tipIndex];
+      final favSet = _favoritePerTip[tipIndex];
+      final int limit = _maxMarksForTip(tipIndex);
+
+      if (isFavorite) {
+        // Favorit wieder zurück in "normal markiert"
+        favSet.remove(number);
+        return;
+      }
+
+      // Favorit setzen → muss ausgewählt sein
+      if (!alreadySelected) {
+        if (selSet.length >= limit) {
+          // wenn voll: versuche, eine Nicht-Favoriten-Zahl zu verdrängen
+          final nonFav = selSet.difference(favSet);
+          if (nonFav.isEmpty) {
+            // alle sind Favoriten → kein Platz
+            return;
+          }
+          selSet.remove(nonFav.first);
+        }
+        selSet.add(number);
+      }
+
+      favSet.add(number);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // QUICKTIPP-FUNKTION (Favoriten bleiben erhalten)
   // ---------------------------------------------------------------------------
   void _generateRandomTip(int tipIndex) {
-    final set = <int>{};
+    final fav = _favoritePerTip[tipIndex];
     final limit = _maxMarksForTip(tipIndex);
-    while (set.length < limit) {
-      set.add(_rng.nextInt(maxNumber) + 1);
+
+    // Basis: alle Favoriten
+    final newSet = <int>{}..addAll(fav);
+
+    // Wenn Favoriten schon voll machen → nur auf Favoriten begrenzen
+    if (newSet.length >= limit) {
+      final sorted = newSet.toList()..sort();
+      _selectedPerTip[tipIndex]
+        ..clear()
+        ..addAll(sorted.take(limit));
+      return;
     }
+
+    // Rest mit Zufallszahlen auffüllen (ohne Rücksicht auf nicht-Favoriten, aber inkl. Favoriten)
+    while (newSet.length < limit) {
+      newSet.add(_rng.nextInt(maxNumber) + 1);
+    }
+
     _selectedPerTip[tipIndex]
       ..clear()
-      ..addAll(set);
+      ..addAll(newSet);
   }
 
   void _clearTip(int tipIndex) {
     _selectedPerTip[tipIndex].clear();
+    _favoritePerTip[tipIndex].clear();
   }
 
+  // aktuell nicht verwendet, aber gelassen falls du später noch was damit machst
   int _activeTipCount() {
     return _selectedPerTip.where((s) => s.isNotEmpty).length;
   }
@@ -441,152 +556,159 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
-          Expanded(flex: 3, child: _buildLosnummerBox()),
+          Expanded(flex: 9, child: _buildLosnummerBox()),
           const SizedBox(width: 6),
-          Expanded(flex: 2, child: _buildZusatzspieleBox()),
+          Expanded(flex: 3, child: _buildZusatzspieleBox()),
           const SizedBox(width: 6),
-          Expanded(flex: 2, child: _buildZiehungBox()),
+          Expanded(flex: 3, child: _buildZiehungBox()),
           const SizedBox(width: 6),
-          Expanded(flex: 3, child: _buildLaufzeitUndEinsatzBox(einsatz)),
+          Expanded(flex: 5, child: _buildLaufzeitUndEinsatzBox(einsatz)),
         ],
       ),
     );
   }
 
-Widget _buildLosnummerBox() {
-  return Container(
-    padding: const EdgeInsets.all(6),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(4),
-      border: Border.all(color: Colors.black, width: 1),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Losnummer',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: Colors.red,
-          ),
-        ),
-        const SizedBox(height: 4),
-
-        // Beschriftungen oben (GS + Super6)
-        Center(
-          child: Column(
-            children: [
-              const Text(
-                'GLÜCKSSPIRALE',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Container(
-                height: 1,
-                width: 150,
-                color: Colors.black,
-                margin: const EdgeInsets.only(bottom: 2),
-              ),
-              const Text(
-                'SUPER 6',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Container(
-                height: 1,
-                width: 130,
-                color: Colors.black,
-                margin: const EdgeInsets.only(bottom: 6),
-              ),
-            ],
-          ),
-        ),
-
-        Row(
-          children: [
-            // Zufällig Button links
-            ElevatedButton(
-              onPressed: () => setState(_generateNewLosnummer),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
-              ),
-              child: const Text(
-                'Zufällig',
-                style: TextStyle(fontSize: 11),
-              ),
+  Widget _buildLosnummerBox() {
+    return Container(
+      height: 90,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.black, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Losnummer',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
             ),
-            const SizedBox(width: 6),
+          ),
+          const SizedBox(height: 4),
 
-            // 7 Ziffern
-            for (int i = 0; i < 7; i++)
-              Container(
-                width: 22,
-                height: 28,
-                margin: const EdgeInsets.symmetric(horizontal: 1),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black, width: 1),
-                  color: i == 6 ? Colors.red : Colors.white,
+          // Beschriftungen oben (GS + Super 6)
+          Center(
+            child: Column(
+              children: [
+                const Text(
+                  'GLÜCKSSPIRALE',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
-                child: Center(
-                  child: Text(
-                    _losnummer[i],
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: i == 6 ? Colors.white : Colors.black,
+                Container(
+                  height: 1,
+                  width: 150, // über allen 7 Ziffern
+                  color: Colors.black,
+                  margin: const EdgeInsets.only(bottom: 2),
+                ),
+                const Text(
+                  'SUPER 6',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                Container(
+                  height: 1,
+                  width: 130, // etwas schmaler (über 2.–7. Ziffer)
+                  color: Colors.black,
+                  margin: const EdgeInsets.only(bottom: 6),
+                ),
+              ],
+            ),
+          ),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              // Zufällig Button links
+              ElevatedButton(
+                onPressed: () => setState(_generateNewLosnummer),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                ),
+                child: const Text(
+                  'Zufällig',
+                  style: TextStyle(fontSize: 11),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // 7 Ziffern
+              for (int i = 0; i < 7; i++)
+                Container(
+                  width: 22,
+                  height: 28,
+                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black, width: 1),
+                    color: i == 6 ? Colors.red : Colors.white,
+                  ),
+                  child: Center(
+                    child: Text(
+                      _losnummer[i],
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: i == 6 ? Colors.white : Colors.black,
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
-        ),
-
-        const SizedBox(height: 4),
-
-        // Untere Linien & Beschriftung Spiel77 + Superzahl
-        Center(
-          child: Column(
-            children: [
-              Container(
-                height: 1,
-                width: 150,
-                color: Colors.black,
-                margin: const EdgeInsets.only(bottom: 2),
-              ),
-              const Text(
-                'Spiel77',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 2),
-              const Text(
-                'Superzahl',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ],
           ),
-        ),
-      ],
-    ),
-  );
-}
+
+          const SizedBox(height: 4),
+
+          // Untere Linien & Beschriftung Spiel77 + Superzahl
+          Center(
+            child: Column(
+              children: [
+                Container(
+                  height: 1,
+                  width: 150, // über allen 7 Ziffern
+                  color: Colors.black,
+                  margin: const EdgeInsets.only(bottom: 2),
+                ),
+                const Text(
+                  'Spiel77',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Superzahl',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildZusatzspieleBox() {
     return Container(
+      height: 90,
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -629,6 +751,7 @@ Widget _buildLosnummerBox() {
 
   Widget _buildZiehungBox() {
     return Container(
+      height: 90,
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -661,6 +784,7 @@ Widget _buildLosnummerBox() {
 
   Widget _buildLaufzeitUndEinsatzBox(double einsatz) {
     return Container(
+      height: 90,
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -838,13 +962,17 @@ Widget _buildLosnummerBox() {
 }
 
 // -----------------------------------------------------------------------------
-// CUSTOM PAINTER – Blaues Handkreuz
+// CUSTOM PAINTER – Handkreuz (Farbe konfigurierbar)
 // -----------------------------------------------------------------------------
 class _CrossPainter extends CustomPainter {
+  final Color color;
+
+  _CrossPainter(this.color);
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.blue.shade900
+      ..color = color
       ..strokeWidth = 1.6
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -864,5 +992,6 @@ class _CrossPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _CrossPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _CrossPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
