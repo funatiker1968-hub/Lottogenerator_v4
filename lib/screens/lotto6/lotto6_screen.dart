@@ -88,9 +88,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             _buildHeader(),
             const SizedBox(height: 6),
             Expanded(child: _buildFullSchein()),
-            _buildQuickBar(),
-            _buildBottomBar(),
-          ],
+             _buildBottomBar(),
+             _buildQuickBar(),          ],
         ),
       ),
     );
@@ -553,7 +552,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
     return Container(
       color: redBar,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
       child: Row(
         children: [
           Expanded(flex: 9, child: _buildLosnummerBox()),
