@@ -1,3 +1,7 @@
+// ============================================================================
+// BLOCK 1: IMPORTS & ROOT WIDGET
+// ============================================================================
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 
@@ -8,6 +12,9 @@ class Lotto6Screen extends StatefulWidget {
   State<Lotto6Screen> createState() => _Lotto6ScreenState();
 }
 
+// ============================================================================
+// BLOCK 2: STATE – FELDER & HILFSFUNKTIONEN
+// ============================================================================
 class _Lotto6ScreenState extends State<Lotto6Screen> {
   static const int tipCount = 12;
   static const int maxNumber = 49;
@@ -37,6 +44,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   /// Losnummer (7-stellig)
   late String _losnummer;
 
+  /// Seed, damit die Walzen-Animation neu getriggert wird
+  int _losAnimationSeed = 0;
+
   final Random _rng = Random();
 
   /// System-Reihen pro Systemtyp (echte 6aus49-Kombinationen)
@@ -62,6 +72,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
   void _generateNewLosnummer() {
     _losnummer = List.generate(7, (_) => _rng.nextInt(10)).join();
+    // Seed erhöhen, damit die Walzen-Animation neu startet
+    _losAnimationSeed++;
   }
 
   int _maxMarksForTip(int tipIndex) {
@@ -78,6 +90,14 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     return _systemReihen[mode] ?? 1;
   }
 
+  // aktuell nicht verwendet, aber behalten für evtl. spätere Features
+  int _activeTipCount() {
+    return _selectedPerTip.where((s) => s.isNotEmpty).length;
+  }
+
+  // ========================================================================
+  // BLOCK 3: BUILD + HEADER
+  // ========================================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,16 +108,14 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             _buildHeader(),
             const SizedBox(height: 6),
             Expanded(child: _buildFullSchein()),
-             _buildBottomBar(),
-             _buildQuickBar(),          ],
+            _buildBottomBar(),
+            _buildQuickBar(),
+          ],
         ),
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // HEADER
-  // ---------------------------------------------------------------------------
   Widget _buildHeader() {
     return Container(
       height: 56,
@@ -116,9 +134,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // GESAMTER LOTTO-SCHEIN – 2 Reihen × 6 Spalten
-  // ---------------------------------------------------------------------------
+  // ========================================================================
+  // BLOCK 4: GESAMTER LOTTO-SCHEIN + TIPP-KARTEN
+  // ========================================================================
   Widget _buildFullSchein() {
     return Center(
       child: AspectRatio(
@@ -164,9 +182,10 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // EIN TIPP MIT RASTER + DROPDOWN FÜR SYSTEMMODUS + ZAHLENLEISTE UNTEN
-  // ---------------------------------------------------------------------------
+  /// EIN TIPP MIT:
+  /// - Dropdown (Normal/System7–12)
+  /// - Raster 1–49
+  /// - Kugelleiste unten (Favoriten rot, andere blau)
   Widget _buildTipCard(int tipNumber) {
     final int tipIndex = tipNumber - 1;
     final int mode = _systemMode[tipIndex];
@@ -246,15 +265,16 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                         // Wenn zu viele Kreuze für neuen Modus → einkürzen
                         final limit = _maxMarksForTip(tipIndex);
                         if (_selectedPerTip[tipIndex].length > limit) {
-                          final sorted = _selectedPerTip[tipIndex].toList()
-                            ..sort();
+                          final sorted =
+                              _selectedPerTip[tipIndex].toList()..sort();
                           _selectedPerTip[tipIndex]
                             ..clear()
                             ..addAll(sorted.take(limit));
                         }
                         // Favoriten auf neue Auswahl beschränken
-                        _favoritePerTip[tipIndex]
-                            .removeWhere((n) => !_selectedPerTip[tipIndex].contains(n));
+                        _favoritePerTip[tipIndex].removeWhere(
+                          (n) => !_selectedPerTip[tipIndex].contains(n),
+                        );
                       });
                     },
                   ),
@@ -269,7 +289,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
               padding: const EdgeInsets.all(2),
               child: GridView.builder(
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
                   mainAxisSpacing: 1,
                   crossAxisSpacing: 1,
@@ -278,8 +299,10 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                 itemCount: maxNumber,
                 itemBuilder: (context, i) {
                   final number = i + 1;
-                  final isSelected = _selectedPerTip[tipIndex].contains(number);
-                  final isFavorite = _favoritePerTip[tipIndex].contains(number);
+                  final isSelected =
+                      _selectedPerTip[tipIndex].contains(number);
+                  final isFavorite =
+                      _favoritePerTip[tipIndex].contains(number);
                   return _buildNumberCell(
                     tipIndex,
                     number,
@@ -299,33 +322,51 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // ZAHLEN-LEISTE UNTER DEM RASTER (sortiert, Favoriten rot)
-  // ---------------------------------------------------------------------------
+  // ========================================================================
+  // BLOCK 5: ZAHLEN-KUGELN UNTER DEM RASTER
+  // ========================================================================
+  /// Kugeln unter dem Raster: sortiert, Favoriten dunkelrot, andere dunkelblau
   Widget _buildTipFooterNumbers(int tipIndex) {
     final selected = _selectedPerTip[tipIndex].toList()..sort();
     final fav = _favoritePerTip[tipIndex];
 
     if (selected.isEmpty) {
-      return const SizedBox(height: 16);
+      // feste Höhe, damit die Karten optisch gleich bleiben
+      return const SizedBox(height: 24);
     }
 
     return SizedBox(
-      height: 16,
-      child: FittedBox(
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+      height: 24,
+      child: Center(
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 4,
+          runSpacing: 2,
           children: [
             for (final n in selected)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: Text(
-                  '$n',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: fav.contains(n) ? Colors.red : Colors.black,
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF6C0), // hellgelbe Kugel
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: fav.contains(n)
+                        ? Colors.red.shade900
+                        : Colors.blue.shade900,
+                    width: fav.contains(n) ? 1.6 : 1.2,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    '$n',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: fav.contains(n)
+                          ? Colors.red.shade900
+                          : Colors.blue.shade900,
+                    ),
                   ),
                 ),
               ),
@@ -335,11 +376,19 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // ZAHLENFELD + HAND-KREUZ (normal blau, Favorit rot)
-  // ---------------------------------------------------------------------------
+  // ========================================================================
+  // BLOCK 6: TAP-LOGIK, FAVORITEN & QUICKTIPP
+  // ========================================================================
+  // ZAHLENFELD + HAND-KREUZ (Favorit rot, sonst blau)
   Widget _buildNumberCell(
-      int tipIndex, int number, bool isSelected, bool isFavorite) {
+    int tipIndex,
+    int number,
+    bool isSelected,
+    bool isFavorite,
+  ) {
+    final Color selectedNumberColor =
+        isFavorite ? Colors.red.shade900 : Colors.blue.shade900;
+
     return GestureDetector(
       onTap: () => _onNumberTap(tipIndex, number, isSelected),
       onLongPress: () =>
@@ -357,15 +406,14 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                 style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w500,
-                  color:
-                      isSelected ? Colors.black.withOpacity(0.8) : Colors.black,
+                  color: isSelected ? selectedNumberColor : Colors.black,
                 ),
               ),
             ),
             if (isSelected)
               CustomPaint(
                 painter: _CrossPainter(
-                  isFavorite ? Colors.red : Colors.blue.shade900,
+                  isFavorite ? Colors.red.shade900 : Colors.blue.shade900,
                 ),
                 size: Size.infinite,
               ),
@@ -375,9 +423,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // TAP-LOGIK (normales An-/Abwählen, Favoriten werden mit entfernt)
-  // ---------------------------------------------------------------------------
+  // Normales An-/Abwählen, Favoriten werden mit entfernt
   void _onNumberTap(int tipIndex, int number, bool alreadySelected) {
     setState(() {
       final set = _selectedPerTip[tipIndex];
@@ -396,9 +442,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     });
   }
 
-  // ---------------------------------------------------------------------------
   // LONG-PRESS: Favorit an/aus (überlebt Quicktipp)
-  // ---------------------------------------------------------------------------
   void _onNumberLongPress(
     int tipIndex,
     int number,
@@ -434,9 +478,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     });
   }
 
-  // ---------------------------------------------------------------------------
   // QUICKTIPP-FUNKTION (Favoriten bleiben erhalten)
-  // ---------------------------------------------------------------------------
   void _generateRandomTip(int tipIndex) {
     final fav = _favoritePerTip[tipIndex];
     final limit = _maxMarksForTip(tipIndex);
@@ -453,7 +495,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
       return;
     }
 
-    // Rest mit Zufallszahlen auffüllen (ohne Rücksicht auf nicht-Favoriten, aber inkl. Favoriten)
+    // Rest mit Zufallszahlen auffüllen
     while (newSet.length < limit) {
       newSet.add(_rng.nextInt(maxNumber) + 1);
     }
@@ -468,14 +510,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     _favoritePerTip[tipIndex].clear();
   }
 
-  // aktuell nicht verwendet, aber gelassen falls du später noch was damit machst
-  int _activeTipCount() {
-    return _selectedPerTip.where((s) => s.isNotEmpty).length;
-  }
-
-  // ---------------------------------------------------------------------------
-  // QUICKTIP-LEISTE
-  // ---------------------------------------------------------------------------
+  // ========================================================================
+  // BLOCK 7: QUICKTIP-LEISTE
+  // ========================================================================
   Widget _buildQuickBar() {
     return Container(
       height: 44,
@@ -502,8 +539,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             ),
             child: const Text('Quicktipp', style: TextStyle(fontSize: 12)),
           ),
@@ -519,8 +555,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
               backgroundColor: Colors.white,
               foregroundColor: Colors.black,
               side: const BorderSide(color: Colors.black),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             ),
             child: const Text('Löschen', style: TextStyle(fontSize: 12)),
           ),
@@ -542,9 +577,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // UNTERE FUNKTIONS-LEISTE (Losnummer, Zusatzspiele, Ziehungstage, Einsatz)
-  // ---------------------------------------------------------------------------
+  // ========================================================================
+  // BLOCK 8: UNTERE FUNKTIONS-LEISTE (LOSNUMMER, ZUSATZ, ZIEHUNG, EINSATZ)
+  // ========================================================================
   Widget _buildBottomBar() {
     const redBar = Color(0xFFD00000);
 
@@ -552,9 +587,10 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
     return Container(
       color: redBar,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       child: Row(
         children: [
+          // Breitenverteilung wie bereits von dir gewünscht angepasst
           Expanded(flex: 9, child: _buildLosnummerBox()),
           const SizedBox(width: 6),
           Expanded(flex: 3, child: _buildZusatzspieleBox()),
@@ -567,6 +603,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
+  // ========================================================================
+  // BLOCK 9: LOSNUMMER-BOX MIT WALZEN (B3) + ORIGINAL-BESCHRIIFTUNG
+  // ========================================================================
   Widget _buildLosnummerBox() {
     return Container(
       height: 90,
@@ -589,7 +628,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
           ),
           const SizedBox(height: 4),
 
-          // Beschriftungen oben (GS + Super 6)
+          // Beschriftungen oben (GS + Super 6) – originalgetreu
           Center(
             child: Column(
               children: [
@@ -625,47 +664,11 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
             ),
           ),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              // Zufällig Button links
-              ElevatedButton(
-                onPressed: () => setState(_generateNewLosnummer),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                ),
-                child: const Text(
-                  'Zufällig',
-                  style: TextStyle(fontSize: 11),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // 7 Ziffern
-              for (int i = 0; i < 7; i++)
-                Container(
-                  width: 22,
-                  height: 28,
-                  margin: const EdgeInsets.symmetric(horizontal: 1),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black, width: 1),
-                    color: i == 6 ? Colors.red : Colors.white,
-                  ),
-                  child: Center(
-                    child: Text(
-                      _losnummer[i],
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: i == 6 ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          // Walzen + Zufällig-Button (B3 Optik, Walzenlogik)
+          LosnummerWalzen(
+            targetNumber: _losnummer,
+            animationSeed: _losAnimationSeed,
+            onRandomPressed: () => setState(_generateNewLosnummer),
           ),
 
           const SizedBox(height: 4),
@@ -825,9 +828,10 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // EINSATZ-BERECHNUNG (echte Systempreise)
-  // ---------------------------------------------------------------------------
+  // ========================================================================
+  // BLOCK 10: EINSATZ-BERECHNUNG + MINI-CHECKBOXEN + CHIPS
+  // ========================================================================
+  // echte Systempreise
   double _calculateStake() {
     // Grundpreis aus allen nicht-leeren Tipps, unter Berücksichtigung System
     const double preisProReihe = 1.20;
@@ -854,13 +858,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     // Gesamteinsatz
     double gesamt =
         grundpreis * ziehungenProWoche * _laufzeitWochen + bearbeitungsGebuehr;
-
     return gesamt;
   }
 
-  // ---------------------------------------------------------------------------
-  // MINI-CHECKBOXEN
-  // ---------------------------------------------------------------------------
   Widget _buildMiniCheckbox(
     String label,
     bool value,
@@ -899,9 +899,6 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // ZIEHUNGSTAGE-CHIP
-  // ---------------------------------------------------------------------------
   Widget _buildRadioChip(String label, int value) {
     final bool selected = _ziehungstage == value;
 
@@ -932,9 +929,6 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // LAUFZEIT-CHIP
-  // ---------------------------------------------------------------------------
   Widget _buildLaufzeitChip(String label, int value) {
     final bool selected = _laufzeitWochen == value;
 
@@ -960,9 +954,231 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 }
 
-// -----------------------------------------------------------------------------
-// CUSTOM PAINTER – Handkreuz (Farbe konfigurierbar)
-// -----------------------------------------------------------------------------
+// ============================================================================
+// BLOCK 11: WALZEN-WIDGET FÜR LOSNUMMER (B3: 3D, WIPPEN, BLINKEN)
+// ============================================================================
+class LosnummerWalzen extends StatefulWidget {
+  final String targetNumber;
+  final int animationSeed;
+  final VoidCallback onRandomPressed;
+
+  const LosnummerWalzen({
+    super.key,
+    required this.targetNumber,
+    required this.animationSeed,
+    required this.onRandomPressed,
+  });
+
+  @override
+  State<LosnummerWalzen> createState() => _LosnummerWalzenState();
+}
+
+class _LosnummerWalzenState extends State<LosnummerWalzen> {
+  static const _tick = Duration(milliseconds: 40);
+
+  late List<int> _currentDigits;
+  late List<bool> _locked;
+  Timer? _timer;
+
+  bool _superBlinkVisible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initFromTarget();
+  }
+
+  void _initFromTarget() {
+    _currentDigits = List<int>.filled(7, 0);
+    _locked = List<bool>.filled(7, false);
+
+    if (widget.targetNumber.length == 7) {
+      for (int i = 0; i < 7; i++) {
+        final d = int.tryParse(widget.targetNumber[i]) ?? 0;
+        _currentDigits[i] = d;
+        _locked[i] = true;
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(LosnummerWalzen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.animationSeed != widget.animationSeed ||
+        oldWidget.targetNumber != widget.targetNumber) {
+      _startSpin();
+    }
+  }
+
+  void _startSpin() {
+    _timer?.cancel();
+    _superBlinkVisible = true;
+    _locked = List<bool>.filled(7, false);
+
+    final start = DateTime.now();
+
+    _timer = Timer.periodic(_tick, (timer) {
+      final elapsedMs = DateTime.now().difference(start).inMilliseconds;
+      bool allLocked = true;
+
+      for (int i = 0; i < 7; i++) {
+        // Stopzeit je Walze: 0.6s, 0.9s, 1.2s, ..., +0.3s
+        final stopTime = 600 + i * 300;
+
+        if (elapsedMs < stopTime) {
+          // Drehen – je später, desto sichtbarer langsamer
+          _currentDigits[i] = (_currentDigits[i] + 1) % 10;
+          allLocked = false;
+        } else if (!_locked[i]) {
+          // Genau auf Zielziffer stellen
+          if (widget.targetNumber.length == 7) {
+            final d = int.tryParse(widget.targetNumber[i]) ?? 0;
+            _currentDigits[i] = d;
+          }
+          _locked[i] = true;
+        }
+      }
+
+      setState(() {});
+
+      if (allLocked) {
+        timer.cancel();
+        _startWobbleAndBlink();
+      }
+    });
+  }
+
+  void _startWobbleAndBlink() {
+    _timer?.cancel();
+
+    if (widget.targetNumber.length != 7) return;
+    final target = int.tryParse(widget.targetNumber[6]) ?? 0;
+
+    int phase = 0;
+    _superBlinkVisible = true;
+
+    _timer = Timer.periodic(const Duration(milliseconds: 120), (timer) {
+      setState(() {
+        // 0–8: 3× Wippbewegung (je 3 Schritte: +1, -1, Ziel)
+        if (phase < 9) {
+          final m = phase % 3;
+          if (m == 0) {
+            _currentDigits[6] = (target + 1) % 10;
+          } else if (m == 1) {
+            _currentDigits[6] = (target + 9) % 10;
+          } else {
+            _currentDigits[6] = target;
+          }
+        }
+        // 9–14: Blinken Superzahl (3× an/aus)
+        else if (phase < 15) {
+          _currentDigits[6] = target;
+          _superBlinkVisible = !_superBlinkVisible;
+        }
+        // danach stabil
+        else {
+          _currentDigits[6] = target;
+          _superBlinkVisible = true;
+          timer.cancel();
+        }
+
+        phase++;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        // Zufällig-Button links
+        ElevatedButton(
+          onPressed: widget.onRandomPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          ),
+          child: const Text(
+            'Zufällig',
+            style: TextStyle(fontSize: 11),
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // 7 Walzen
+        for (int i = 0; i < 7; i++) _buildWalzenDigit(i),
+      ],
+    );
+  }
+
+  Widget _buildWalzenDigit(int index) {
+    final bool isSuper = index == 6;
+    final int digit = _currentDigits[index];
+
+    // B3-Optik: leichte 3D-Wölbung über Verlauf + Schatten
+    final Gradient gradient = isSuper
+        ? const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFE00000),
+              Color(0xFFB00000),
+            ],
+          )
+        : const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFFDE0),
+              Color(0xFFFFFFFF),
+            ],
+          );
+
+    final bool visible = !isSuper || _superBlinkVisible;
+
+    return Container(
+      width: 22,
+      height: 28,
+      margin: const EdgeInsets.symmetric(horizontal: 1),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(3),
+        boxShadow: const [
+          BoxShadow(
+            offset: Offset(0, 1),
+            blurRadius: 1.5,
+            color: Colors.black26,
+          ),
+        ],
+        border: Border.all(color: Colors.black, width: 1),
+      ),
+      child: Center(
+        child: visible
+            ? Text(
+                '$digit',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isSuper ? Colors.white : Colors.black,
+                ),
+              )
+            : const SizedBox.shrink(),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// BLOCK 12: CUSTOM PAINTER – HANDKREUZ (FARBE KONFIGURIERBAR)
+// ============================================================================
 class _CrossPainter extends CustomPainter {
   final Color color;
 
