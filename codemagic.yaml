@@ -1,111 +1,24 @@
 workflows:
-  android-apk:
-    name: Lottogenerator Android Build
+  android-debug:
+    name: Android Debug Build
     environment:
       flutter: 3.38.1
-      vars:
-        PACKAGE_NAME: "com.example.lottogenerator_v4"
-      android_signing:  # Optional: für Release-Builds
-        - lottogenerator_v4
     scripts:
-      - name: Flutter Version anzeigen
-        script: |
-          flutter --version
-
-      - name: Dependencies installieren
+      - name: Install dependencies
         script: |
           flutter pub get
-
-      - name: Analyzer laufen lassen (Infos ignorieren)
+      
+      - name: Check code
         script: |
-          flutter analyze --no-fatal-warnings --no-fatal-infos
-
-      - name: Android Gradle aktualisieren für sqflite
-        script: |
-          cd android
-          ./gradlew app:dependencies
-
-      - name: Debug-APK bauen
+          flutter analyze --no-pub --no-fatal-infos
+      
+      - name: Build debug APK
         script: |
           flutter build apk --debug
-
-      - name: Release-APK bauen (optional)
-        script: |
-          flutter build apk --release --no-tree-shake-icons
-
+      
     artifacts:
       - build/app/outputs/flutter-apk/app-debug.apk
-      - build/app/outputs/flutter-apk/app-release.apk
-
-    publishing:
-      email:
-        recipients:
-          - funatiker1968@gmail.com
-
-  # NEU: iOS Workflow für SQLite
-  ios-ipa:
-    name: Lottogenerator iOS Build
-    environment:
-      flutter: 3.38.1
-      vars:
-        BUNDLE_ID: "com.example.lottogenerator_v4"
-      xcode: latest
-      cocoapods: default
-    scripts:
-      - name: Flutter Version anzeigen
-        script: |
-          flutter --version
-
-      - name: Dependencies installieren
-        script: |
-          flutter pub get
-
-      - name: iOS Pods installieren (für sqflite)
-        script: |
-          cd ios
-          pod install
-
-      - name: Analyzer laufen lassen
-        script: |
-          flutter analyze --no-fatal-warnings --no-fatal-infos
-
-      - name: iOS IPA bauen
-        script: |
-          flutter build ipa --debug
-
-    artifacts:
-      - build/ios/ipa/*.ipa
-
-    publishing:
-      email:
-        recipients:
-          - funatiker1968@gmail.com
-
-  # NEU: Web Build Workflow
-  web-build:
-    name: Lottogenerator Web Build
-    environment:
-      flutter: 3.38.1
-    scripts:
-      - name: Flutter Version anzeigen
-        script: |
-          flutter --version
-
-      - name: Dependencies installieren
-        script: |
-          flutter pub get
-
-      - name: Analyzer laufen lassen
-        script: |
-          flutter analyze --no-fatal-warnings --no-fatal-infos
-
-      - name: Web App bauen
-        script: |
-          flutter build web --release
-
-    artifacts:
-      - build/web/**/*
-
+      
     publishing:
       email:
         recipients:
