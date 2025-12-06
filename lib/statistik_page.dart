@@ -29,7 +29,7 @@ class _StatistikPageState extends State<StatistikPage> {
       // Häufigkeiten berechnen - jetzt korrekt mit allen Zahlen
       final haeufigkeiten = <int, int>{};
       for (var ziehung in geladeneZiehungen) {
-        for (var zahl in ziehung.zahlen) {  // Statt alleZahlen verwenden wir zahlen
+        for (var zahl in ziehung.zahlen) {
           haeufigkeiten[zahl] = (haeufigkeiten[zahl] ?? 0) + 1;
         }
       }
@@ -228,9 +228,6 @@ class _StatistikPageState extends State<StatistikPage> {
       itemBuilder: (context, index) {
         final zahl = index + 1;
         final haeufigkeit = zahlHaeufigkeiten[zahl] ?? 0;
-        final prozent = ziehungen.isNotEmpty 
-            ? (haeufigkeit / ziehungen.length * 100).toStringAsFixed(0)
-            : '0';
         
         return Container(
           decoration: BoxDecoration(

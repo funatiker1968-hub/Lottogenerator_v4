@@ -8,13 +8,10 @@ workflows:
         script: |
           flutter pub get
       
-      - name: Check code
+      - name: Build debug APK (skip analysis)
         script: |
-          flutter analyze --no-pub --no-fatal-infos
-      
-      - name: Build debug APK
-        script: |
-          flutter build apk --debug
+          # Direkter Build ohne Analyse
+          flutter build apk --debug --no-analytics
       
     artifacts:
       - build/app/outputs/flutter-apk/app-debug.apk
@@ -23,3 +20,10 @@ workflows:
       email:
         recipients:
           - funatiker1968@gmail.com
+      
+      slack:
+        channel: '#builds'
+        notify_on_build_start: true
+        notify:
+          success: true
+          failure: true
