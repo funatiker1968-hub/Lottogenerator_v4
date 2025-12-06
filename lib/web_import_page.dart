@@ -23,6 +23,11 @@ class _WebImportPageState extends State<WebImportPage> {
   void initState() {
     super.initState();
     _testConnection();
+    
+    // Beispiel-Daten vorbelegen
+    _textController.text = '''03.12.2025 21 27 29 37 44 49
+29.11.2025 11 31 6 22 25 44
+26.11.2025 29 24 28 29 39 81''';
   }
   
   Future<void> _testConnection() async {
@@ -83,6 +88,21 @@ class _WebImportPageState extends State<WebImportPage> {
     });
   }
   
+  Future<void> _importExample() async {
+    // Beispiel-Daten für Test
+    final beispielText = '''03.12.2025 21 27 29 37 44 49
+29.11.2025 11 31 6 22 25 44
+26.11.2025 29 24 28 29 39 81
+22.11.2025 15 18 21 29 32 33
+19.11.2025 4 7 18 26 37 48''';
+    
+    _textController.text = beispielText;
+    
+    setState(() {
+      _status = 'Beispiel-Daten geladen. Klicken Sie auf "Aus Text importieren"';
+    });
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,7 +153,7 @@ class _WebImportPageState extends State<WebImportPage> {
                         const Padding(
                           padding: EdgeInsets.only(top: 8.0),
                           child: Text(
-                            'Hinweis: Die Website blockiert wahrscheinlich automatische Zugriffe. Bitte verwenden Sie die manuelle Text-Eingabe.',
+                            'Hinweis: Automatischer Import wird blockiert. Bitte kopieren Sie manuell.',
                             style: TextStyle(fontSize: 12, color: Colors.orange),
                           ),
                         ),
@@ -145,11 +165,6 @@ class _WebImportPageState extends State<WebImportPage> {
               const SizedBox(height: 20),
               
               // Manueller Text-Import (EMPFEHLUNG)
-              const Text(
-                'Manueller Import (empfohlen)',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
-              ),
-              const SizedBox(height: 10),
               Card(
                 color: Colors.green[50],
                 child: Padding(
@@ -158,23 +173,66 @@ class _WebImportPageState extends State<WebImportPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'So gehen Sie vor:',
+                        '📋 ANLEITUNG für winnersystem.org:',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text('1. Gehen Sie zu winnersystem.org/archiv/'),
+                      const Text('2. Wählen Sie "Lotto 6aus49" und ein Jahr'),
+                      const Text('3. Klicken Sie auf die gewünschte Ziehung'),
+                      const Text('4. Kopieren Sie NUR die 6 Lottozahlen'),
+                      const Text('5. Fügen Sie hier im Format ein:'),
+                      const SizedBox(height: 5),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        color: Colors.white,
+                        child: const Text(
+                          'DD.MM.JJJJ ZZ ZZ ZZ ZZ ZZ ZZ\nDD.MM.JJJJ ZZ ZZ ZZ ZZ ZZ ZZ',
+                          style: TextStyle(fontFamily: 'monospace', fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      Row(
+                        children: [
+                          OutlinedButton(
+                            onPressed: _importExample,
+                            child: const Text('Beispiel laden'),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Testen Sie zuerst mit Beispiel-Daten',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Text-Eingabe
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Eingabe (eine Zeile pro Ziehung):',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 8),
-                      const Text('1. Gehen Sie zu winnersystem.org/archiv/'),
-                      const Text('2. Wählen Sie ein Jahr aus (z.B. 2023)'),
-                      const Text('3. Markieren und kopieren Sie die Lottozahlen'),
-                      const Text('4. Fügen Sie sie hier ein'),
-                      const Text('5. Klicken Sie auf "Aus Text importieren"'),
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 10),
                       TextField(
                         controller: _textController,
-                        maxLines: 6,
+                        maxLines: 10,
                         decoration: const InputDecoration(
-                          labelText: 'Lottozahlen hier einfügen',
+                          labelText: 'Lottozahlen einfügen',
                           border: OutlineInputBorder(),
-                          hintText: 'Beispiel:\n04.12.2023 3 7 12 25 34 42 SZ:8\n02.12.2023 5 11 19 23 37 45 SZ:2',
+                          hintText: 'Beispiel:\n03.12.2025 21 27 29 37 44 49\n29.11.2025 11 31 6 22 25 44',
                         ),
                       ),
                       const SizedBox(height: 15),
@@ -200,20 +258,17 @@ class _WebImportPageState extends State<WebImportPage> {
               const Divider(),
               const SizedBox(height: 20),
               
-              // Automatischer Import (wahrscheinlich blockiert)
-              const Text(
-                'Automatischer Import (experimentell)',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange),
-              ),
-              const SizedBox(height: 10),
+              // Automatischer Import
               Card(
-                color: Colors.orange[50],
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Einzelnes Jahr automatisch importieren:'),
+                      const Text(
+                        'Automatischer Versuch (wahrscheinlich blockiert):',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                      ),
                       const SizedBox(height: 10),
                       Row(
                         children: [
@@ -237,11 +292,6 @@ class _WebImportPageState extends State<WebImportPage> {
                             child: const Text('Versuchen'),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        '⚠️ Achtung: Dieser Weg wird sehr wahrscheinlich von der Website blockiert!',
-                        style: TextStyle(fontSize: 12, color: Colors.orange),
                       ),
                     ],
                   ),
@@ -286,6 +336,40 @@ class _WebImportPageState extends State<WebImportPage> {
                     ],
                   ),
                 ),
+              
+              const SizedBox(height: 20),
+              
+              // Tipps
+              Card(
+                color: Colors.blue[50],
+                child: const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '💡 TIPPS für erfolgreichen Import:',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                      ),
+                      SizedBox(height: 8),
+                      Text('• Kopieren Sie NUR die 6 Lottozahlen (ohne Superzahl/Gewinnklassen)'),
+                      Text('• Format: "DD.MM.JJJJ ZZ ZZ ZZ ZZ ZZ ZZ"'),
+                      Text('• Eine Zeile pro Ziehung'),
+                      Text('• Zahlen müssen zwischen 1 und 49 liegen'),
+                      SizedBox(height: 8),
+                      Text(
+                        'Beispiel für eine Zeile:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '03.12.2025 21 27 29 37 44 49',
+                        style: TextStyle(fontFamily: 'monospace', backgroundColor: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
