@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'lotto_6aus49_screen.dart';
 import 'eurojackpot_screen.dart';
 import '../widgets/historie_button.dart';
@@ -16,7 +15,6 @@ class _HomeScreenState extends State<HomeScreen> {
   late Timer _timer;
   Duration _timeUntilLotto = Duration.zero;
   Duration _timeUntilEuro = Duration.zero;
-  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
@@ -27,14 +25,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _playSound() async {
-    await _audioPlayer.play(AssetSource('sounds/click.mp3'));
-  }
-
   @override
   void dispose() {
     _timer.cancel();
-    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -173,12 +166,14 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return Scaffold(
-      appBar: AppBar(
         title: const Text('Lottogenerator'),
-        actions: [
-          HistorieButton(audioPlayer: _audioPlayer),
-        ],
-      ),
+),
+    appBar: AppBar(
+     title: const Text('Lottogenerator'),
+     actions: [
+    // Hier kommt später der Historie-Button
+     ],
+   ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: isPortrait
@@ -196,7 +191,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       textColor: Colors.black,
                       shadow: shadow,
                       onTap: () {
-                        _playSound();
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const Lotto6aus49Screen(),
@@ -217,7 +211,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       textColor: Colors.white,
                       shadow: shadow,
                       onTap: () {
-                        _playSound();
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const EurojackpotScreen(),
@@ -242,7 +235,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       textColor: Colors.black,
                       shadow: shadow,
                       onTap: () {
-                        _playSound();
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const Lotto6aus49Screen(),
@@ -263,7 +255,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       textColor: Colors.white,
                       shadow: shadow,
                       onTap: () {
-                        _playSound();
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const EurojackpotScreen(),

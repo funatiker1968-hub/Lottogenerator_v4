@@ -106,18 +106,9 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
         child: Column(
           children: [
             _buildHeader(),
-            const SizedBox(height: 4),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildFullSchein(),
-                    const SizedBox(height: 8),
-                    _buildBottomBar(),
-                  ],
-                ),
-              ),
-            ),
+            const SizedBox(height: 6),
+            Expanded(child: _buildFullSchein()),
+            _buildBottomBar(),
             _buildQuickBar(),
           ],
         ),
@@ -148,43 +139,44 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   // ========================================================================
   Widget _buildFullSchein() {
     return Center(
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.95,
-        ),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFCE8),
-          border: Border.all(color: Colors.red.shade700, width: 1.6),
-        ),
-        child: Column(
-          children: [
-            // Erste Reihe mit 6 Tipps
-            Row(
-              children: List.generate(
-                6,
-                (i) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: _buildTipCard(i + 1),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFCE8),
+            border: Border.all(color: Colors.red.shade700, width: 1.6),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Row(
+                  children: List.generate(
+                    6,
+                    (i) => Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: _buildTipCard(i + 1),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            // Zweite Reihe mit 6 Tipps
-            Row(
-              children: List.generate(
-                6,
-                (i) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: _buildTipCard(i + 7),
+              Expanded(
+                child: Row(
+                  children: List.generate(
+                    6,
+                    (i) => Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: _buildTipCard(i + 7),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -339,37 +331,37 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     final fav = _favoritePerTip[tipIndex];
 
     if (selected.isEmpty) {
-      // Minimale Höhe, aber flexibel
-      return const SizedBox(height: 20);
+      // feste Höhe, damit die Karten optisch gleich bleiben
+      return const SizedBox(height: 24);
     }
 
     return SizedBox(
-      height: 20, // Reduzierte Höhe für kompaktere Darstellung
+      height: 24,
       child: Center(
         child: Wrap(
           alignment: WrapAlignment.center,
-          spacing: 2, // Reduzierter Abstand
-          runSpacing: 1,
+          spacing: 4,
+          runSpacing: 2,
           children: [
             for (final n in selected)
               Container(
-                width: 18, // Etwas kleinere Kugeln
-                height: 18,
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF6C0),
+                  color: const Color(0xFFFFF6C0), // hellgelbe Kugel
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: fav.contains(n)
                         ? Colors.red.shade900
                         : Colors.blue.shade900,
-                    width: fav.contains(n) ? 1.4 : 1.0,
+                    width: fav.contains(n) ? 1.6 : 1.2,
                   ),
                 ),
                 child: Center(
                   child: Text(
                     '$n',
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: fav.contains(n)
                           ? Colors.red.shade900
@@ -586,7 +578,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
   }
 
   // ========================================================================
-  // BLOCK 8: UNTERE FUNKTIONS-LEISTE
+  // BLOCK 8: UNTERE FUNKTIONS-LEISTE (LOSNUMMER, ZUSATZ, ZIEHUNG, EINSATZ)
   // ========================================================================
   Widget _buildBottomBar() {
     const redBar = Color(0xFFD00000);
@@ -595,38 +587,29 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
     return Container(
       color: redBar,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      child: Row(
         children: [
-          // Obere Reihe mit Losnummer und Zusatzspielen
-          Row(
-            children: [
-              Expanded(flex: 9, child: _buildLosnummerBox()),
-              const SizedBox(width: 6),
-              Expanded(flex: 3, child: _buildZusatzspieleBox()),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Untere Reihe mit Ziehung und Laufzeit/Einsatz
-          Row(
-            children: [
-              Expanded(flex: 3, child: _buildZiehungBox()),
-              const SizedBox(width: 6),
-              Expanded(flex: 5, child: _buildLaufzeitUndEinsatzBox(einsatz)),
-            ],
-          ),
+          // Breitenverteilung wie bereits von dir gewünscht angepasst
+          Expanded(flex: 9, child: _buildLosnummerBox()),
+          const SizedBox(width: 6),
+          Expanded(flex: 3, child: _buildZusatzspieleBox()),
+          const SizedBox(width: 6),
+          Expanded(flex: 3, child: _buildZiehungBox()),
+          const SizedBox(width: 6),
+          Expanded(flex: 5, child: _buildLaufzeitUndEinsatzBox(einsatz)),
         ],
       ),
     );
   }
 
   // ========================================================================
-  // BLOCK 9: LOSNUMMER-BOX MIT WALZEN
+  // BLOCK 9: LOSNUMMER-BOX MIT WALZEN (B3) + ORIGINAL-BESCHRIIFTUNG
   // ========================================================================
   Widget _buildLosnummerBox() {
     return Container(
-      height: 80,
-      padding: const EdgeInsets.all(4),
+      height: 90,
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(4),
@@ -638,72 +621,72 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
           const Text(
             'Losnummer',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
               color: Colors.red,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
 
-          // Beschriftungen oben (GS + Super 6)
+          // Beschriftungen oben (GS + Super 6) – originalgetreu
           Center(
             child: Column(
               children: [
                 const Text(
                   'GLÜCKSSPIRALE',
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
                 ),
                 Container(
                   height: 1,
-                  width: 130,
+                  width: 150, // über allen 7 Ziffern
                   color: Colors.black,
-                  margin: const EdgeInsets.only(bottom: 1),
+                  margin: const EdgeInsets.only(bottom: 2),
                 ),
                 const Text(
                   'SUPER 6',
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
                 ),
                 Container(
                   height: 1,
-                  width: 110,
+                  width: 130, // etwas schmaler (über 2.–7. Ziffer)
                   color: Colors.black,
-                  margin: const EdgeInsets.only(bottom: 4),
+                  margin: const EdgeInsets.only(bottom: 6),
                 ),
               ],
             ),
           ),
 
-          // Walzen + Zufällig-Button
+          // Walzen + Zufällig-Button (B3 Optik, Walzenlogik)
           LosnummerWalzen(
             targetNumber: _losnummer,
             animationSeed: _losAnimationSeed,
             onRandomPressed: () => setState(_generateNewLosnummer),
           ),
 
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
 
-          // Untere Linien & Beschriftung
+          // Untere Linien & Beschriftung Spiel77 + Superzahl
           Center(
             child: Column(
               children: [
                 Container(
                   height: 1,
-                  width: 130,
+                  width: 150, // über allen 7 Ziffern
                   color: Colors.black,
-                  margin: const EdgeInsets.only(bottom: 1),
+                  margin: const EdgeInsets.only(bottom: 2),
                 ),
                 const Text(
                   'Spiel77',
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
@@ -712,7 +695,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
                 const Text(
                   'Superzahl',
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 10,
                     color: Colors.red,
                     fontWeight: FontWeight.bold,
                   ),
@@ -727,8 +710,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
   Widget _buildZusatzspieleBox() {
     return Container(
-      height: 80,
-      padding: const EdgeInsets.all(4),
+      height: 90,
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(4),
@@ -740,7 +723,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
           const Text(
             'Zusatzspiele',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
               color: Colors.red,
             ),
@@ -770,8 +753,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
   Widget _buildZiehungBox() {
     return Container(
-      height: 80,
-      padding: const EdgeInsets.all(4),
+      height: 90,
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(4),
@@ -783,7 +766,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
           const Text(
             'Ziehungstage',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
               color: Colors.red,
             ),
@@ -803,8 +786,8 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 
   Widget _buildLaufzeitUndEinsatzBox(double einsatz) {
     return Container(
-      height: 80,
-      padding: const EdgeInsets.all(4),
+      height: 90,
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(4),
@@ -816,7 +799,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
           const Text(
             'Laufzeit & Einsatz',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
               color: Colors.red,
             ),
@@ -835,7 +818,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
           Text(
             'Spieleinsatz: ${einsatz.toStringAsFixed(2)} €',
             style: const TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
@@ -972,7 +955,7 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
 }
 
 // ============================================================================
-// BLOCK 11: WALZEN-WIDGET FÜR LOSNUMMER
+// BLOCK 11: WALZEN-WIDGET FÜR LOSNUMMER (B3: 3D, WIPPEN, BLINKEN)
 // ============================================================================
 class LosnummerWalzen extends StatefulWidget {
   final String targetNumber;
@@ -1115,23 +1098,22 @@ class _LosnummerWalzenState extends State<LosnummerWalzen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        // Zufällig-Button links (kleiner)
+        // Zufällig-Button links
         ElevatedButton(
           onPressed: widget.onRandomPressed,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            minimumSize: const Size(0, 24),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           ),
           child: const Text(
             'Zufällig',
-            style: TextStyle(fontSize: 10),
+            style: TextStyle(fontSize: 11),
           ),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 8),
 
-        // 7 Walzen (kompakter)
+        // 7 Walzen
         for (int i = 0; i < 7; i++) _buildWalzenDigit(i),
       ],
     );
@@ -1163,27 +1145,27 @@ class _LosnummerWalzenState extends State<LosnummerWalzen> {
     final bool visible = !isSuper || _superBlinkVisible;
 
     return Container(
-      width: 18, // Kleinere Walzen
-      height: 22,
-      margin: const EdgeInsets.symmetric(horizontal: 0.5),
+      width: 22,
+      height: 28,
+      margin: const EdgeInsets.symmetric(horizontal: 1),
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: BorderRadius.circular(2),
+        borderRadius: BorderRadius.circular(3),
         boxShadow: const [
           BoxShadow(
             offset: Offset(0, 1),
-            blurRadius: 1,
+            blurRadius: 1.5,
             color: Colors.black26,
           ),
         ],
-        border: Border.all(color: Colors.black, width: 0.8),
+        border: Border.all(color: Colors.black, width: 1),
       ),
       child: Center(
         child: visible
             ? Text(
                 '$digit',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: isSuper ? Colors.white : Colors.black,
                 ),
@@ -1193,6 +1175,7 @@ class _LosnummerWalzenState extends State<LosnummerWalzen> {
     );
   }
 }
+
 // ============================================================================
 // BLOCK 12: CUSTOM PAINTER – HANDKREUZ (FARBE KONFIGURIERBAR)
 // ============================================================================
