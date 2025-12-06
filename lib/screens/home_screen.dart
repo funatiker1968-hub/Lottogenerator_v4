@@ -4,6 +4,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'lotto_6aus49_screen.dart';
 import 'eurojackpot_screen.dart';
 import '../widgets/historie_button.dart';
+import '../widgets/statistik_button.dart';
+import '../models/lotto_data.dart';
+import '../services/lotto_database_erweitert.dart' as erweiterteDB;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +20,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Duration _timeUntilLotto = Duration.zero;
   Duration _timeUntilEuro = Duration.zero;
   final AudioPlayer _audioPlayer = AudioPlayer();
+  
+  // Echte Daten
+  List<LottoZiehung> _lottoZiehungen = [];
+  List<LottoZiehung> _euroZiehungen = [];
+  bool _datenLaden = false;
 
   @override
   void initState() {
@@ -25,6 +33,36 @@ class _HomeScreenState extends State<HomeScreen> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       _updateCountdowns();
     });
+    _ladeEchteDaten();
+  }
+
+  Future<void> _ladeEchteDaten() async {
+    setState(() => _datenLaden = true);
+    
+    try {
+      // Hole letzte 2 Ziehungen für Lotto 6aus49
+      final lottoDaten = await erweiterteDB.ErweiterteLottoDatenbank.holeLetzteZiehungen(
+        spieltyp: '6aus49',
+        limit: 2,
+      );
+      
+      // Hole letzte 2 Ziehungen für Eurojackpot
+      final euroDaten = await erweiterteDB.ErweiterteLottoDatenbank.holeLetzteZiehungen(
+        spieltyp: 'Eurojackpot',
+        limit: 2,
+      );
+      
+      setState(() {
+        _lottoZiehungen = lottoDaten;
+        _euroZiehungen = euroDaten;
+        _datenLaden = false;
+      });
+      
+      print('✅ Echte Daten geladen: ${_lottoZiehungen.length} Lotto, ${_euroZiehungen.length} Euro');
+    } catch (error) {
+      print('⚠️ Keine echten Daten verfügbar: $error');
+      setState(() => _datenLaden = false);
+    }
   }
 
   Future<void> _playSound() async {
@@ -141,6 +179,54 @@ class _HomeScreenState extends State<HomeScreen> {
     return '$dPart$hPart:$mPart:$sPart';
   }
 
+  // Formatierung für echte Ziehungen
+  String _formatEchteZiehung(LottoZiehung ziehung) {
+    final wochentag = _getGermanWeekday(ziehung.datum.weekday);
+    final datum = ziehung.formatierterDatum;
+    final zahlen = ziehung.zahlen.map((z) => z.toString().padLeft(2, '0')).join(' ');
+    
+    return '$wochentag $datum: $zahlen | SZ: ${ziehung.superzahl.toString().padLeft(2, '0')}';
+  }
+
+  String _getGermanWeekday(int weekday) {
+    final weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    return weekdays[weekday - 1];
+  }
+
+  // Fallback-Daten falls keine echten Daten verfügbar
+  List<String> get _lottoFallbackDaten {
+    if (_lottoZiehungen.isNotEmpty) {
+      return _lottoZiehungen.map(_formatEchteZiehung).toList();
+    }
+    return [
+      'Mi 12.11.2025: 5 11 18 24 37 42 | SZ: 7',
+      'Sa 08.11.2025: 3 9 16 28 33 47 | SZ: 2',
+    ];
+  }
+
+  List<String> get _euroFallbackDaten {
+    if (_euroZiehungen.isNotEmpty) {
+      // Eurojackpot hat 5 Hauptzahlen + 2 Eurozahlen
+      return _euroZiehungen.map((ziehung) {
+        final wochentag = _getGermanWeekday(ziehung.datum.weekday);
+        final datum = ziehung.formatierterDatum;
+        
+        // Sicherstellen, dass wir genug Zahlen haben
+        if (ziehung.zahlen.length >= 7) {
+          final hauptzahlen = ziehung.zahlen.take(5).map((z) => z.toString().padLeft(2, '0')).join(' ');
+          final eurozahlen = ziehung.zahlen.skip(5).take(2).map((z) => z.toString().padLeft(2, '0')).join(', ');
+          return '$wochentag $datum: $hauptzahlen | Euro: $eurozahlen';
+        } else {
+          return '$wochentag $datum: ${ziehung.zahlen.map((z) => z.toString().padLeft(2, '0')).join(' ')}';
+        }
+      }).toList();
+    }
+    return [
+      'Fr 14.11.2025: 4 17 25 38 45 | Euro: 3, 8',
+      'Di 11.11.2025: 7 12 29 41 49 | Euro: 2, 10',
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final orientation = MediaQuery.of(context).orientation;
@@ -161,21 +247,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final euroCountdownText =
         'Nächste Ziehung in ${_formatDuration(_timeUntilEuro)}';
 
-    // Beispiel-Daten für letzte Ziehungen (statisch – nur Anzeige)
-    final lottoLastDraws = [
-      'Mi 12.11.2025: 5 11 18 24 37 42 | SZ: 7',
-      'Sa 08.11.2025: 3 9 16 28 33 47 | SZ: 2',
-    ];
-
-    final euroLastDraws = [
-      'Fr 14.11.2025: 4 17 25 38 45 | Euro: 3, 8',
-      'Di 11.11.2025: 7 12 29 41 49 | Euro: 2, 10',
-    ];
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Lottogenerator'),
         actions: [
+          if (_datenLaden)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          StatistikButton(audioPlayer: _audioPlayer),
           HistorieButton(audioPlayer: _audioPlayer),
         ],
       ),
@@ -191,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       subtitle: '12 Tippfelder im Scheinstil mit Superzahl',
                       drawDaysText: 'Ziehungen: Mittwoch & Samstag',
                       countdownText: lottoCountdownText,
-                      lastDrawLines: lottoLastDraws,
+                      lastDrawLines: _lottoFallbackDaten,
                       color: Colors.yellow.shade700,
                       textColor: Colors.black,
                       shadow: shadow,
@@ -203,6 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         );
                       },
+                      hatEchteDaten: _lottoZiehungen.isNotEmpty,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -212,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       subtitle: '8 Tippfelder + 2 Eurozahlen',
                       drawDaysText: 'Ziehungen: Dienstag & Freitag',
                       countdownText: euroCountdownText,
-                      lastDrawLines: euroLastDraws,
+                      lastDrawLines: _euroFallbackDaten,
                       color: Colors.blue.shade600,
                       textColor: Colors.white,
                       shadow: shadow,
@@ -224,6 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         );
                       },
+                      hatEchteDaten: _euroZiehungen.isNotEmpty,
                     ),
                   ),
                 ],
@@ -237,7 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       subtitle: '12 Tippfelder im Scheinstil mit Superzahl',
                       drawDaysText: 'Ziehungen: Mittwoch & Samstag',
                       countdownText: lottoCountdownText,
-                      lastDrawLines: lottoLastDraws,
+                      lastDrawLines: _lottoFallbackDaten,
                       color: Colors.yellow.shade700,
                       textColor: Colors.black,
                       shadow: shadow,
@@ -249,6 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         );
                       },
+                      hatEchteDaten: _lottoZiehungen.isNotEmpty,
                     ),
                   ),
                   const SizedBox(width: 20),
@@ -258,7 +346,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       subtitle: '8 Tippfelder + 2 Eurozahlen',
                       drawDaysText: 'Ziehungen: Dienstag & Freitag',
                       countdownText: euroCountdownText,
-                      lastDrawLines: euroLastDraws,
+                      lastDrawLines: _euroFallbackDaten,
                       color: Colors.blue.shade600,
                       textColor: Colors.white,
                       shadow: shadow,
@@ -270,11 +358,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         );
                       },
+                      hatEchteDaten: _euroZiehungen.isNotEmpty,
                     ),
                   ),
                 ],
               ),
       ),
+      floatingActionButton: _lottoZiehungen.isEmpty && _euroZiehungen.isEmpty
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                _playSound();
+                Navigator.pushNamed(context, '/historie');
+              },
+              icon: const Icon(Icons.add_chart),
+              label: const Text('Daten hinzufügen'),
+              backgroundColor: Colors.green,
+            )
+          : null,
     );
   }
 }
@@ -290,6 +390,7 @@ class _GameCard extends StatelessWidget {
   final Color textColor;
   final List<BoxShadow> shadow;
   final VoidCallback onTap;
+  final bool hatEchteDaten;
 
   const _GameCard({
     required this.title,
@@ -301,6 +402,7 @@ class _GameCard extends StatelessWidget {
     required this.textColor,
     required this.shadow,
     required this.onTap,
+    this.hatEchteDaten = false,
   });
 
   @override
@@ -319,14 +421,36 @@ class _GameCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Titel
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
+              // Titel mit Echte-Daten-Indikator
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                  if (hatEchteDaten)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'LIVE',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 8),
               // Untertitel
@@ -340,7 +464,7 @@ class _GameCard extends StatelessWidget {
               const SizedBox(height: 12),
               // Letzte Ziehungen
               Text(
-                'Letzte Ziehungen:',
+                hatEchteDaten ? 'Aktuelle Ziehungen:' : 'Beispiel-Ziehungen:',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
