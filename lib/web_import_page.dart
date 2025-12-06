@@ -147,7 +147,7 @@ class _WebImportPageState extends State<WebImportPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Verbindungsstatus - FIXED: Graue Schrift auf Schwarz
+              // Verbindungsstatus - KORRIGIERT: Heller Hintergrund, dunkle Schrift
               Card(
                 color: _connectionTested
                     ? (_connectionOk ? Colors.green[50] : Colors.orange[50])
@@ -164,7 +164,7 @@ class _WebImportPageState extends State<WebImportPage> {
                                 : Icons.info,
                             color: _connectionTested
                                 ? (_connectionOk ? Colors.green : Colors.orange)
-                                : Colors.grey[700], // Dunkleres Grau für besseren Kontrast
+                                : Colors.grey,
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -172,9 +172,7 @@ class _WebImportPageState extends State<WebImportPage> {
                               _status,
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: _connectionTested
-                                    ? (_connectionOk ? Colors.green[800] : Colors.orange[800]) // Dunklere Farben
-                                    : Colors.grey[900], // SCHWARZ statt grau
+                                color: Colors.black, // IMMER SCHWARZ auf hellem Hintergrund
                               ),
                             ),
                           ),
@@ -187,8 +185,8 @@ class _WebImportPageState extends State<WebImportPage> {
                             'Hinweis: Automatischer Import wird blockiert. Bitte verwenden Sie alternative Quellen.',
                             style: TextStyle(
                               fontSize: 12, 
-                              color: Colors.orange[800], // Dunkleres Orange
-                              fontWeight: FontWeight.bold,
+                              color: Colors.black87, // Dunkelgrau statt schwarz
+                              fontWeight: FontWeight.normal,
                             ),
                           ),
                         ),
@@ -199,9 +197,9 @@ class _WebImportPageState extends State<WebImportPage> {
               
               const SizedBox(height: 20),
               
-              // NEU: Alternative Datenquellen Auswahl
+              // Alternative Datenquellen Auswahl
               Card(
-                color: Colors.blue[50],
+                color: Colors.blue[50], // HELLER Hintergrund
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -211,7 +209,7 @@ class _WebImportPageState extends State<WebImportPage> {
                         '🌐 Alternative Datenquellen:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold, 
-                          color: Colors.blue[900], // Dunkleres Blau
+                          color: Colors.black, // SCHWARZ auf hellem Blau
                           fontSize: 16,
                         ),
                       ),
@@ -224,15 +222,19 @@ class _WebImportPageState extends State<WebImportPage> {
                           labelText: 'Datenquelle wählen',
                           border: OutlineInputBorder(),
                           labelStyle: TextStyle(color: Colors.black87),
+                          filled: true,
+                          fillColor: Colors.white,
                         ),
+                        dropdownColor: Colors.white, // Heller Dropdown-Hintergrund
+                        style: const TextStyle(color: Colors.black), // Schwarzer Text
                         items: [
                           DropdownMenuItem(
                             value: 'winnersystem',
                             child: Row(
                               children: [
-                                const Icon(Icons.web, size: 16),
+                                Icon(Icons.web, size: 16, color: Colors.black87),
                                 const SizedBox(width: 8),
-                                const Text('winnersystem.org'),
+                                const Text('winnersystem.org', style: TextStyle(color: Colors.black)),
                               ],
                             ),
                           ),
@@ -240,9 +242,9 @@ class _WebImportPageState extends State<WebImportPage> {
                             value: 'lottozahlen',
                             child: Row(
                               children: [
-                                const Icon(Icons.alternate_email, size: 16),
+                                Icon(Icons.alternate_email, size: 16, color: Colors.black87),
                                 const SizedBox(width: 8),
-                                const Text('lottozahlenonline.de'),
+                                const Text('lottozahlenonline.de', style: TextStyle(color: Colors.black)),
                               ],
                             ),
                           ),
@@ -250,9 +252,9 @@ class _WebImportPageState extends State<WebImportPage> {
                             value: 'custom',
                             child: Row(
                               children: [
-                                const Icon(Icons.link, size: 16),
+                                Icon(Icons.link, size: 16, color: Colors.black87),
                                 const SizedBox(width: 8),
-                                const Text('Eigene URL eingeben'),
+                                const Text('Eigene URL eingeben', style: TextStyle(color: Colors.black)),
                               ],
                             ),
                           ),
@@ -277,15 +279,18 @@ class _WebImportPageState extends State<WebImportPage> {
                                 hintText: 'https://...',
                                 border: OutlineInputBorder(),
                                 labelStyle: TextStyle(color: Colors.black87),
+                                hintStyle: TextStyle(color: Colors.black54),
+                                filled: true,
+                                fillColor: Colors.white,
                               ),
-                              style: const TextStyle(color: Colors.black87),
+                              style: const TextStyle(color: Colors.black), // Schwarzer Text
                             ),
                             const SizedBox(height: 10),
                             Text(
                               '💡 Tipp: Viele Lotto-Websites bieten historische Daten im CSV- oder Tabellenformat',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.blue[800],
+                                color: Colors.black87, // Dunkelgrau
                                 fontStyle: FontStyle.italic,
                               ),
                             ),
@@ -300,7 +305,7 @@ class _WebImportPageState extends State<WebImportPage> {
               
               // Manueller Text-Import (EMPFEHLUNG)
               Card(
-                color: Colors.green[50],
+                color: Colors.green[50], // HELLER Hintergrund
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -310,13 +315,13 @@ class _WebImportPageState extends State<WebImportPage> {
                         '📋 ANLEITUNG für manuellen Import:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold, 
-                          color: Colors.green[900], // Dunkleres Grün
+                          color: Colors.black, // SCHWARZ auf hellem Grün
                         ),
                       ),
                       const SizedBox(height: 10),
                       Text(
                         '1. Gehen Sie zu einer Lotto-Website',
-                        style: TextStyle(color: Colors.black87), // Dunkler
+                        style: TextStyle(color: Colors.black87),
                       ),
                       Text(
                         '2. Suchen Sie historische Ziehungen',
@@ -333,13 +338,13 @@ class _WebImportPageState extends State<WebImportPage> {
                       const SizedBox(height: 5),
                       Container(
                         padding: const EdgeInsets.all(8),
-                        color: Colors.white,
+                        color: Colors.white, // Weißer Hintergrund für Code
                         child: const Text(
                           'DD.MM.JJJJ ZZ ZZ ZZ ZZ ZZ ZZ\nDD.MM.JJJJ ZZ ZZ ZZ ZZ ZZ ZZ',
                           style: TextStyle(
                             fontFamily: 'monospace', 
                             fontSize: 12,
-                            color: Colors.black, // Schwarz für Code
+                            color: Colors.black, // Schwarzer Code
                           ),
                         ),
                       ),
@@ -349,8 +354,9 @@ class _WebImportPageState extends State<WebImportPage> {
                           OutlinedButton(
                             onPressed: _importExample,
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.green[900],
+                              foregroundColor: Colors.green[800], // Dunkelgrün
                               side: BorderSide(color: Colors.green[700]!),
+                              backgroundColor: Colors.white, // Weißer Hintergrund
                             ),
                             child: const Text('Beispiel laden'),
                           ),
@@ -360,7 +366,7 @@ class _WebImportPageState extends State<WebImportPage> {
                               'Testen Sie zuerst mit Beispiel-Daten',
                               style: TextStyle(
                                 fontSize: 12, 
-                                color: Colors.grey[800], // Dunkleres Grau
+                                color: Colors.black87, // Dunkelgrau
                               ),
                             ),
                           ),
@@ -375,6 +381,7 @@ class _WebImportPageState extends State<WebImportPage> {
               
               // Text-Eingabe
               Card(
+                color: Colors.white, // WEIßER Hintergrund
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -384,20 +391,22 @@ class _WebImportPageState extends State<WebImportPage> {
                         'Eingabe (eine Zeile pro Ziehung):',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87, // Dunkler
+                          color: Colors.black,
                         ),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: _textController,
                         maxLines: 10,
-                        style: const TextStyle(color: Colors.black87), // Dunkler Text
+                        style: const TextStyle(color: Colors.black),
                         decoration: const InputDecoration(
                           labelText: 'Lottozahlen einfügen',
                           labelStyle: TextStyle(color: Colors.black54),
                           border: OutlineInputBorder(),
                           hintText: 'Beispiel:\n03.12.2025 21 27 29 37 44 49\n29.11.2025 11 31 6 22 25 44',
                           hintStyle: TextStyle(color: Colors.black54),
+                          filled: true,
+                          fillColor: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 15),
@@ -425,6 +434,7 @@ class _WebImportPageState extends State<WebImportPage> {
               
               // Automatischer Import
               Card(
+                color: Colors.white, // WEIßER Hintergrund
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -434,7 +444,7 @@ class _WebImportPageState extends State<WebImportPage> {
                         'Automatischer Import:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold, 
-                          color: Colors.orange[900], // Dunkleres Orange
+                          color: Colors.black,
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -444,11 +454,13 @@ class _WebImportPageState extends State<WebImportPage> {
                             child: TextField(
                               controller: _yearController,
                               keyboardType: TextInputType.number,
-                              style: const TextStyle(color: Colors.black87),
+                              style: const TextStyle(color: Colors.black),
                               decoration: const InputDecoration(
                                 labelText: 'Jahr (z.B. 2023)',
                                 labelStyle: TextStyle(color: Colors.black54),
                                 border: OutlineInputBorder(),
+                                filled: true,
+                                fillColor: Colors.white,
                               ),
                             ),
                           ),
@@ -468,7 +480,7 @@ class _WebImportPageState extends State<WebImportPage> {
                         'Quelle: ${_selectedSource == 'custom' ? _customUrlController.text : _sourceUrls[_selectedSource] ?? _selectedSource}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[800],
+                          color: Colors.black87,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -479,7 +491,7 @@ class _WebImportPageState extends State<WebImportPage> {
               
               const SizedBox(height: 20),
               
-              // Status-Anzeige - FIXED: Bessere Kontraste
+              // Status-Anzeige - KORRIGIERT: Heller Hintergrund, dunkle Schrift
               if (_isImporting || _lastResult != null)
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -488,8 +500,8 @@ class _WebImportPageState extends State<WebImportPage> {
                            (_lastResult?.success == true ? Colors.green[50] : Colors.orange[50]),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: _isImporting ? Colors.blue[700]! : 
-                            (_lastResult?.success == true ? Colors.green[700]! : Colors.orange[700]!),
+                      color: _isImporting ? Colors.blue[300]! : 
+                            (_lastResult?.success == true ? Colors.green[300]! : Colors.orange[300]!),
                     ),
                   ),
                   child: Row(
@@ -509,9 +521,8 @@ class _WebImportPageState extends State<WebImportPage> {
                       Expanded(
                         child: Text(
                           _status,
-                          style: TextStyle(
-                            color: _isImporting ? Colors.blue[900]! : 
-                                   (_lastResult?.success == true ? Colors.green[900]! : Colors.orange[900]!),
+                          style: const TextStyle(
+                            color: Colors.black, // IMMER SCHWARZ
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -522,9 +533,9 @@ class _WebImportPageState extends State<WebImportPage> {
               
               const SizedBox(height: 20),
               
-              // Tipps - FIXED: Dunklere Farben
+              // Tipps - KORRIGIERT: Heller Hintergrund, dunkle Schrift
               Card(
-                color: Colors.blue[50],
+                color: Colors.blue[50], // HELLER Hintergrund
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -534,7 +545,7 @@ class _WebImportPageState extends State<WebImportPage> {
                         '💡 ALTERNATIVE QUELLEN für Lotto-Daten:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold, 
-                          color: Colors.blue[900], // Dunkleres Blau
+                          color: Colors.black, // SCHWARZ
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -545,7 +556,7 @@ class _WebImportPageState extends State<WebImportPage> {
                       const SizedBox(height: 8),
                       Text(
                         '📋 Anleitung für alle Quellen:',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -578,7 +589,7 @@ class _WebImportPageState extends State<WebImportPage> {
         text,
         style: const TextStyle(
           fontSize: 12,
-          color: Colors.black87,
+          color: Colors.black87, // Dunkelgrau
           fontFamily: 'monospace',
         ),
       ),
