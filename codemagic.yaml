@@ -1,16 +1,15 @@
 workflows:
-  android-debug:
-    name: Android Debug Build
+  debug-apk:
+    name: Build Debug APK
     environment:
       flutter: 3.38.1
     scripts:
-      - name: Install dependencies
+      - name: Install packages
         script: |
           flutter pub get
       
       - name: Build debug APK
         script: |
-          # Einfacher Build ohne Analyse
           flutter build apk --debug
       
     artifacts:
