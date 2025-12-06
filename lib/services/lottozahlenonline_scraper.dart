@@ -1,12 +1,11 @@
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as parser;
-import 'package:html/dom.dart';
 import '../models/lotto_data.dart';
 import 'lotto_database.dart';
 
-class LottoOnlineScraper {
-  // ====== HAUPTPUNKTION: Import für lottozahlenonline.de ======
-  Future<ScraperResult> importVonLottozahlenOnline({
+class LottozahlenOnlineScraper {
+  // Importiert einen Jahresbereich von lottozahlenonline.de
+  Future<ScraperResult> importJahresBereich({
     required int startJahr,
     required int endJahr,
     String spieltag = 'beide',
@@ -24,12 +23,6 @@ class LottoOnlineScraper {
       return result;
     }
 
-    if (startJahr < 1955 || endJahr > DateTime.now().year) {
-      result.success = false;
-      result.errorMessage = 'Jahre müssen zwischen 1955 und ${DateTime.now().year} liegen.';
-      return result;
-    }
-
     // 2. Für jedes Jahr im Bereich
     for (int jahr = startJahr; jahr <= endJahr; jahr++) {
       try {
@@ -44,6 +37,7 @@ class LottoOnlineScraper {
       } catch (e) {
         fehler.add('$jahr: Unbekannter Fehler ($e)');
       }
+      // Kurze Pause, um die Website nicht zu überlasten
       await Future.delayed(const Duration(milliseconds: 800));
     }
 
@@ -51,18 +45,18 @@ class LottoOnlineScraper {
     if (gesamtImportiert > 0) {
       result.success = true;
       result.importedCount = gesamtImportiert;
-      result.message = 'Erfolgreich $gesamtImportiert Ziehungen aus dem Bereich $startJahr-$endJahr importiert.';
+      result.message = 'Erfolgreich $gesamtImportiert Ziehungen aus $startJahr-$endJahr importiert.';
       if (fehler.isNotEmpty) {
-        result.message += '\n⚠️ Teilweise Fehler: ${fehler.join(", ")}';
+        result.message += ' (Teilweise Fehler: ${fehler.join(", ")})';
       }
     } else {
       result.success = false;
-      result.errorMessage = 'Import fehlgeschlagen.\nFehler: ${fehler.join(", ")}';
+      result.errorMessage = 'Import fehlgeschlagen. Fehler: ${fehler.join(", ")}';
     }
     return result;
   }
 
-  // Hilfsfunktion für ein einzelnes Jahr
+  // Hilfsfunktion: Importiert EIN einzelnes Jahr
   Future<ScraperResult> _importEinzelnesJahr(int jahr, String spieltag) async {
     final result = ScraperResult();
     try {
@@ -97,7 +91,7 @@ class LottoOnlineScraper {
       final tabellen = document.querySelectorAll('table');
       var zielTabelle = tabellen.firstWhere(
         (t) => t.text.contains('Datum') && t.text.contains('SZ'),
-        orElse: () => Element.tag('table')
+        orElse: () => parser.parse('<table></table>').querySelector('table')!
       );
       
       if (zielTabelle.children.isEmpty) {
@@ -105,28 +99,30 @@ class LottoOnlineScraper {
         return result;
       }
 
-      // 5. Zeilen verarbeiten (erste ist Kopfzeile)
+      // 5. Zeilen der Tabelle durchgehen (erste Zeile ist die Kopfzeile)
       final zeilen = zielTabelle.querySelectorAll('tr').skip(1);
       for (var row in zeilen) {
         final zellen = row.querySelectorAll('td');
+        // Wir erwarten Zellen: [Nr?, Datum, Zahl1, Zahl2, Zahl3, Zahl4, Zahl5, Zahl6, Superzahl, ...]
         if (zellen.length >= 9) {
           try {
-            final datumText = zellen[1].text.trim();
-            final superzahlText = zellen[8].text.trim();
+            final datumText = zellen[1].text.trim(); // Zelle 1 = Datum
+            final superzahlText = zellen[8].text.trim(); // Zelle 8 = Superzahl
             final lottozahlen = <int>[];
+            // Zellen 2-7 sind die 6 Lottozahlen
             for (int i = 2; i <= 7; i++) {
               lottozahlen.add(int.parse(zellen[i].text.trim()));
             }
-            
+            // Datum umwandeln (DD.MM.JJJJ)
             final dateParts = datumText.split('.');
             final datum = DateTime(
-              int.parse(dateParts[2]),
-              int.parse(dateParts[1]),
-              int.parse(dateParts[0]),
+              int.parse(dateParts[2]), // Jahr
+              int.parse(dateParts[1]), // Monat
+              int.parse(dateParts[0]), // Tag
             );
-            
+            // Superzahl
             final superzahl = int.parse(superzahlText);
-            
+            // Zur Liste hinzufügen
             ziehungen.add(LottoZiehung(
               datum: datum,
               zahlen: lottozahlen,
@@ -134,12 +130,13 @@ class LottoOnlineScraper {
               spieltyp: '6aus49',
             ));
           } catch (e) {
-            print('⚠️ Zeilen-Parsingfehler: $e');
+            // Fehler in einer Zeile ignorieren und mit der nächsten fortfahren
+            print('      ⚠️ Zeilen-Parsingfehler: $e');
           }
         }
       }
 
-      // 6. In Datenbank speichern
+      // 6. Gefundene Ziehungen in die Datenbank speichern
       if (ziehungen.isNotEmpty) {
         for (var ziehung in ziehungen) {
           await EinfacheLottoDatenbank.fuegeZiehungHinzu(ziehung);
@@ -148,15 +145,15 @@ class LottoOnlineScraper {
         result.importedCount = ziehungen.length;
         print('      ✅ $jahr: ${ziehungen.length} Ziehungen gespeichert.');
       } else {
-        result.errorMessage = 'Keine Ziehungen gefunden';
+        result.errorMessage = 'Keine Ziehungen in der Tabelle gefunden';
       }
     } catch (e) {
-      result.errorMessage = 'Fehler: $e';
+      result.errorMessage = 'Ausnahme: $e';
     }
     return result;
   }
 
-  // HTTP Headers
+  // HTTP Headers für bessere Akzeptanz
   Map<String, String> _getHeaders() {
     return {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -176,7 +173,7 @@ class ScraperResult {
   String message = '';
   String errorMessage = '';
   String suggestion = '';
-
+  
   @override
   String toString() {
     if (success) {
