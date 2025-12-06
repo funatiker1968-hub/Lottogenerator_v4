@@ -6,7 +6,8 @@ import 'screens/home_screen.dart';
 import 'screens/lotto_6aus49_screen.dart';
 import 'screens/eurojackpot_screen.dart';
 import 'historie_page.dart';
-import 'statistik_page.dart';  // Neue Statistik-Seite
+import 'statistik_page.dart';
+import 'web_import_page.dart';  // Neue Import-Seite
 
 void main() {
   runApp(const LottoGeneratorApp());
@@ -44,7 +45,8 @@ class _LottoGeneratorAppState extends State<LottoGeneratorApp> {
         "/lotto": (_) => const Lotto6aus49Screen(),
         "/eurojackpot": (_) => const EurojackpotScreen(),
         "/historie": (_) => const HistoriePage(),
-        "/statistik": (_) => const StatistikPage(),  // Neue Route für Statistik
+        "/statistik": (_) => const StatistikPage(),
+        "/webimport": (_) => const WebImportPage(),  // Neue Route
       },
     );
   }
