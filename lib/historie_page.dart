@@ -91,7 +91,7 @@ class _HistoriePageState extends State<HistoriePage> {
           IconButton(
             icon: const Icon(Icons.cloud_download),
             onPressed: () {
-              Navigator.pushNamed(context, '/webimport');
+              Navigator.pushNamed(context, '/lottoimport');
             },
             tooltip: 'Daten aus Web importieren',
           ),
