@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lottogenerator_v4/services/lottozahlenonline_scraper.dart';
+import 'package:lottogenerator_v4/services/web_scraper.dart';
 
 class LottoImportPage extends StatefulWidget {
   const LottoImportPage({Key? key}) : super(key: key);
@@ -9,7 +9,7 @@ class LottoImportPage extends StatefulWidget {
 }
 
 class _LottoImportPageState extends State<LottoImportPage> {
-  final LottozahlenOnlineScraper scraper = LottozahlenOnlineScraper();
+  final LottoOnlineScraper scraper = LottoOnlineScraper();
   final TextEditingController _startJahrController = TextEditingController();
   final TextEditingController _endJahrController = TextEditingController();
   final TextEditingController _textController = TextEditingController();
@@ -21,59 +21,54 @@ class _LottoImportPageState extends State<LottoImportPage> {
   @override
   void initState() {
     super.initState();
-    // Vorbelegen mit Beispiel-Jahren zum Testen
     _startJahrController.text = '2023';
     _endJahrController.text = '2024';
   }
   
-
-  Future<void> _importFromText() async {
-    if (_textController.text.trim().isEmpty) {
-      setState(() { _status = "❌ Bitte Text eingeben"; });
-      return;
-    }
-    setState(() { _isImporting = true; _status = "🔄 Importiere aus Text..."; });
-    final result = await scraper.importFromText(_textController.text, "6aus49");
-    setState(() { _isImporting = false; _lastResult = result; _status = result.toString(); });
-  }
   Future<void> _importJahresBereich() async {
-    // 1. Eingaben lesen und prüfen
     final startJahr = int.tryParse(_startJahrController.text);
     final endJahr = int.tryParse(_endJahrController.text);
     
     if (startJahr == null || endJahr == null) {
       setState(() { 
-        _status = '❌ Bitte in beide Felder eine Jahreszahl eingeben (z.B. 2020).'; 
+        _status = '❌ Bitte in beide Felder eine Jahreszahl eingeben.'; 
       });
       return;
     }
     
     if (startJahr > endJahr) {
       setState(() { 
-        _status = '❌ "Von Jahr" ($startJahr) muss kleiner oder gleich "Bis Jahr" ($endJahr) sein.'; 
+        _status = '❌ "Von Jahr" muss kleiner sein als "Bis Jahr".'; 
       });
       return;
     }
     
-    // 2. Status "Import läuft" anzeigen
     setState(() {
       _isImporting = true;
-      _status = '🔄 Importiere Jahre $startJahr bis $endJahr von lottozahlenonline.de...\n(Dies kann einige Zeit dauern)';
+      _status = '🔄 Importiere Jahre $startJahr bis $endJahr...';
     });
     
-    // 3. Den Scraper ausführen
-    final result = await scraper.importJahresBereich(
+    final result = await scraper.importVonLottozahlenOnline(
       startJahr: startJahr,
       endJahr: endJahr,
       spieltag: 'beide',
     );
     
-    // 4. Ergebnis anzeigen
     setState(() {
       _isImporting = false;
       _lastResult = result;
       _status = result.toString();
     });
+  }
+
+  Future<void> _importFromText() async {
+    if (_textController.text.trim().isEmpty) {
+      setState(() { _status = '❌ Bitte Text eingeben'; });
+      return;
+    }
+    setState(() { _isImporting = true; _status = '🔄 Importiere aus Text...'; });
+    final result = await scraper.importFromText(_textController.text, "6aus49");
+    setState(() { _isImporting = false; _lastResult = result; _status = result.toString(); });
   }
   
   @override
@@ -85,8 +80,7 @@ class _LottoImportPageState extends State<LottoImportPage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: ListView(
           children: [
             // Status-Anzeige
             Container(
@@ -112,10 +106,7 @@ class _LottoImportPageState extends State<LottoImportPage> {
                       ),
                     ),
                   Expanded(
-                    child: Text(
-                      _status,
-                      style: const TextStyle(color: Colors.black),
-                    ),
+                    child: Text(_status, style: const TextStyle(color: Colors.black)),
                   ),
                 ],
               ),
@@ -123,40 +114,40 @@ class _LottoImportPageState extends State<LottoImportPage> {
             
             const SizedBox(height: 30),
             
-            // Eingabe-Karte
+            // Jahresbereich
             Card(
               elevation: 3,
+              color: Colors.white,
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '📅 Jahresbereich auswählen',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+                      '📅 Jahresbereich (lottozahlenonline.de)',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'Importiert alle Lottoziehungen (Mittwoch & Samstag) für den angegebenen Zeitraum von lottozahlenonline.de.',
+                      '⚠️ Diese Website verwendet JavaScript. Der automatische Import funktioniert nicht.',
                       style: TextStyle(color: Colors.black),
                     ),
                     const SizedBox(height: 25),
                     
-                    // Jahres-Eingabefelder
                     Row(
                       children: [
                         Expanded(
                           child: TextField(
                             controller: _startJahrController,
                             keyboardType: TextInputType.number,
+                            style: const TextStyle(color: Colors.black),
                             decoration: const InputDecoration(
                               labelText: 'Von Jahr',
+                              labelStyle: TextStyle(color: Colors.black54),
                               border: OutlineInputBorder(),
                               hintText: 'z.B. 2010',
+                              fillColor: Colors.white,
+                              filled: true,
                             ),
                           ),
                         ),
@@ -167,49 +158,33 @@ class _LottoImportPageState extends State<LottoImportPage> {
                           child: TextField(
                             controller: _endJahrController,
                             keyboardType: TextInputType.number,
+                            style: const TextStyle(color: Colors.black),
                             decoration: const InputDecoration(
                               labelText: 'Bis Jahr',
+                              labelStyle: TextStyle(color: Colors.black54),
                               border: OutlineInputBorder(),
                               hintText: 'z.B. 2020',
+                              fillColor: Colors.white,
+                              filled: true,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 5),
-                    const Text(
-                      'Hinweis: Beginne mit einem kleinen Bereich (z.B. 2023-2023) zum Testen.',
-                      style: TextStyle(fontSize: 12, color: Colors.black),
-                    ),
                     
                     const SizedBox(height: 25),
                     
-                    // Import-Button
                     SizedBox(
                       width: double.infinity,
                       height: 55,
                       child: ElevatedButton.icon(
                         onPressed: _isImporting ? null : _importJahresBereich,
-                        icon: _isImporting 
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
-                            : const Icon(Icons.download_for_offline),
-                        label: Text(
-                          _isImporting ? 'Import läuft...' : 'Jahresbereich importieren',
-                          style: const TextStyle(fontSize: 16),
-                        ),
+                        icon: const Icon(Icons.download_for_offline),
+                        label: const Text('Automatischen Import versuchen', style: TextStyle(fontSize: 16)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.deepPurple,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
                     ),
@@ -219,142 +194,53 @@ class _LottoImportPageState extends State<LottoImportPage> {
             ),
             
             const SizedBox(height: 20),
-          // Manuelle Texteingabe
-          Card(
-            elevation: 3,
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "📝 Manuelle Texteingabe:",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    "Fügen Sie hier kopierte Lottozahlen ein (eine Zeile pro Ziehung):",
-                    style: TextStyle(color: Colors.black87),
-                  ),
-                  SizedBox(height: 15),
-                  TextField(
-                    controller: _textController,
-                    maxLines: 8,
-                    decoration: InputDecoration(
-                      style: TextStyle(color: Colors.black54), hintText: "Beispiel:\\n03.12.2025 21 27 29 37 44 49\\n29.11.2025 11 31 6 22 25 44",
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 15),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _isImporting ? null : _importFromText,
-                      icon: Icon(Icons.paste),
-                      label: Text("Aus Text importieren"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Manuelle Texteingabe
-          Card(
-            elevation: 3,
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "📝 Manuelle Texteingabe:",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    "Fügen Sie hier kopierte Lottozahlen ein (eine Zeile pro Ziehung):",
-                    style: TextStyle(color: Colors.black87),
-                  ),
-                  SizedBox(height: 15),
-                  TextField(
-                    controller: _textController,
-                    maxLines: 8,
-                    decoration: InputDecoration(
-                      style: TextStyle(color: Colors.black54), hintText: "Beispiel:\\n03.12.2025 21 27 29 37 44 49\\n29.11.2025 11 31 6 22 25 44",
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 15),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _isImporting ? null : _importFromText,
-                      icon: Icon(Icons.paste),
-                      label: Text("Aus Text importieren"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Card(
-            color: Colors.orange[50],
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.info, color: Colors.orange),
-                      SizedBox(width: 10),
-                      Text("Manueller Import notwendig", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-                    ],
-                  ),
-                  SizedBox(height: 10),
-                  Text("1. Gehen Sie zu lottozahlenonline.de", style: TextStyle(color: Colors.black)),
-                  Text("2. Wählen Sie ein Jahr aus", style: TextStyle(color: Colors.black)),
-                  Text("3. Kopieren Sie die gesamte Tabelle", style: TextStyle(color: Colors.black)),
-                  Text("4. Fügen Sie sie unten ein", style: TextStyle(color: Colors.black)),
-                  SizedBox(height: 10),
-                  Text("Format: DD.MM.JJJJ ZZ ZZ ZZ ZZ ZZ ZZ", style: TextStyle(fontFamily: "monospace", color: Colors.black)),
-                ],
-              ),
-            ),
-          ),
             
-            // Tipps-Karte
+            // Manuelle Texteingabe (NUR EINMAL)
             Card(
-              color: Colors.blue[50],
-              child: const Padding(
-                padding: EdgeInsets.all(16.0),
+              elevation: 3,
+              color: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '💡 Tipps für erfolgreichen Import:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                    const Text(
+                      '📝 Manuelle Texteingabe',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'So gehts: 1. lottozahlenonline.de öffnen\n2. Jahr auswählen\n3. Tabelle kopieren\n4. Hier einfügen',
+                      style: TextStyle(color: Colors.black),
+                    ),
+                    const SizedBox(height: 15),
+                    TextField(
+                      controller: _textController,
+                      maxLines: 8,
+                      style: const TextStyle(color: Colors.black),
+                      decoration: const InputDecoration(
+                        hintText: 'Beispiel:\n03.12.2025 21 27 29 37 44 49\n29.11.2025 11 31 6 22 25 44',
+                        border: OutlineInputBorder(),
+                        fillColor: Colors.white,
+                        filled: true,
+                        hintStyle: TextStyle(color: Colors.black54),
                       ),
                     ),
-                    SizedBox(height: 8),
-                    Text('• Teste zuerst mit einem einzelnen Jahr (z.B. 2023-2023)'),
-                    Text('• Ein Jahr hat etwa 104 Ziehungen (52× Mittwoch + 52× Samstag)'),
-                    Text('• Der Import großer Bereiche (z.B. 2000-2025) kann mehrere Minuten dauern'),
-                    Text('• Stelle sicher, dass du mit dem Internet verbunden bist'),
+                    const SizedBox(height: 15),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton.icon(
+                        onPressed: _isImporting ? null : _importFromText,
+                        icon: const Icon(Icons.paste),
+                        label: const Text('Aus Text importieren', style: TextStyle(fontSize: 16)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
