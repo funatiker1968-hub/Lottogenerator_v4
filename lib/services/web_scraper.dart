@@ -65,94 +65,9 @@ class LottoOnlineScraper {
   // Hilfsfunktion für ein einzelnes Jahr
   Future<ScraperResult> _importEinzelnesJahr(int jahr, String spieltag) async {
     final result = ScraperResult();
-    try {
-      // 1. URL bauen
-      String baseUrl;
-      switch (spieltag) {
-        case 'samstag':
-          baseUrl = 'https://www.lottozahlenonline.de/statistik/lotto-am-samstag/lottozahlen-archiv.php';
-          break;
-        case 'mittwoch':
-          baseUrl = 'https://www.lottozahlenonline.de/statistik/lotto-am-mittwoch/lottozahlen-archiv.php';
-          break;
-        case 'beide':
-        default:
-          baseUrl = 'https://www.lottozahlenonline.de/statistik/beide-spieltage/lottozahlen-archiv.php';
-      }
-      final url = '$baseUrl?year=$jahr';
-      print('      📡 Lade: $url');
-
-      // 2. Webseite abrufen
-      final response = await http.get(Uri.parse(url), headers: _getHeaders());
-      if (response.statusCode != 200) {
-        result.errorMessage = 'HTTP-Fehler ${response.statusCode}';
-        return result;
-      }
-
-      // 3. HTML parsen
-      final document = parser.parse(response.body);
-      final ziehungen = <LottoZiehung>[];
-
-      // 4. Die richtige Tabelle finden (enthält "Datum" und "SZ")
-      final tabellen = document.querySelectorAll('table');
-      var zielTabelle = tabellen.firstWhere(
-        (t) => t.text.contains('Datum') && t.text.contains('SZ'),
-        orElse: () => Element.tag('table')
-      );
-      
-      if (zielTabelle.children.isEmpty) {
-        result.errorMessage = 'Tabelle nicht gefunden';
-        return result;
-      }
-
-      // 5. Zeilen verarbeiten (erste ist Kopfzeile)
-      final zeilen = zielTabelle.querySelectorAll('tr').skip(1);
-      for (var row in zeilen) {
-        final zellen = row.querySelectorAll('td');
-        if (zellen.length >= 9) {
-          try {
-            final datumText = zellen[1].text.trim();
-            final superzahlText = zellen[8].text.trim();
-            final lottozahlen = <int>[];
-            for (int i = 2; i <= 7; i++) {
-              lottozahlen.add(int.parse(zellen[i].text.trim()));
-            }
-            
-            final dateParts = datumText.split('.');
-            final datum = DateTime(
-              int.parse(dateParts[2]),
-              int.parse(dateParts[1]),
-              int.parse(dateParts[0]),
-            );
-            
-            final superzahl = int.parse(superzahlText);
-            
-            ziehungen.add(LottoZiehung(
-              datum: datum,
-              zahlen: lottozahlen,
-              superzahl: superzahl,
-              spieltyp: '6aus49',
-            ));
-          } catch (e) {
-            print('⚠️ Zeilen-Parsingfehler: $e');
-          }
-        }
-      }
-
-      // 6. In Datenbank speichern
-      if (ziehungen.isNotEmpty) {
-        for (var ziehung in ziehungen) {
-          await EinfacheLottoDatenbank.fuegeZiehungHinzu(ziehung);
-        }
-        result.success = true;
-        result.importedCount = ziehungen.length;
-        print('      ✅ $jahr: ${ziehungen.length} Ziehungen gespeichert.');
-      } else {
-        result.errorMessage = 'Keine Ziehungen gefunden';
-      }
-    } catch (e) {
-      result.errorMessage = 'Fehler: $e';
-    }
+    result.success = false;
+    result.errorMessage = "❌ Website verwendet JavaScript. Automatischer Import nicht möglich.";
+    result.suggestion = "Bitte gehen Sie zu lottozahlenonline.de, wählen Sie ein Jahr, kopieren Sie die Tabelle und fügen Sie sie manuell ein.";
     return result;
   }
 
@@ -186,3 +101,35 @@ class ScraperResult {
     }
   }
 }
+
+  // Manueller Textimport
+  Future<ScraperResult> importFromText(String rawText, String spieltyp) async {
+    final result = ScraperResult();
+    try {
+      final lines = rawText.split("\n");
+      int counter = 0;
+      for (var line in lines) {
+        if (line.trim().isEmpty) continue;
+        final zahlMatches = RegExp(r"\b\d{1,2}\b").allMatches(line);
+        final allNumbers = zahlMatches.map((m) => int.tryParse(m.group(0)!) ?? -1)
+          .where((n) => n > 0 && n <= 49).toList();
+        if (allNumbers.length >= 6) {
+          counter++;
+          final ziehung = LottoZiehung(
+            datum: DateTime.now().subtract(Duration(days: counter * 7)),
+            zahlen: allNumbers.sublist(0, 6),
+            superzahl: 0,
+            spieltyp: spieltyp,
+          );
+          await EinfacheLottoDatenbank.fuegeZiehungHinzu(ziehung);
+        }
+      }
+      result.success = true;
+      result.importedCount = counter;
+      result.message = "Erfolgreich $counter Ziehungen importiert";
+    } catch (e) {
+      result.success = false;
+      result.errorMessage = "Fehler: $e";
+    }
+    return result;
+  }

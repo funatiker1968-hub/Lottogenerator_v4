@@ -173,19 +173,19 @@ class _HistoriePageState extends State<HistoriePage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.history, size: 64, color: Colors.grey),
+                            Icon(Icons.history, size: 64, color: Colors.black),
                             SizedBox(height: 16),
                             Text(
                               'Keine historischen Daten',
                               style: TextStyle(
                                 fontSize: 18,
-                                color: Colors.grey,
+                                color: Colors.black,
                               ),
                             ),
                             SizedBox(height: 8),
                             Text(
                               'Klicken Sie auf "Beispiel-Daten" oder "Web Import"',
-                              style: TextStyle(color: Colors.grey),
+                              style: TextStyle(color: Colors.black),
                             ),
                           ],
                         ),
@@ -210,7 +210,7 @@ class _HistoriePageState extends State<HistoriePage> {
           title,
           style: const TextStyle(
             fontSize: 14,
-            color: Colors.grey,
+            color: Colors.black,
           ),
         ),
         const SizedBox(height: 4),

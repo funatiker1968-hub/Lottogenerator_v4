@@ -78,19 +78,19 @@ class _StatistikPageState extends State<StatistikPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.bar_chart, size: 64, color: Colors.grey),
+                      Icon(Icons.bar_chart, size: 64, color: Colors.black),
                       SizedBox(height: 16),
                       Text(
                         'Keine Daten für Statistiken',
                         style: TextStyle(
                           fontSize: 18,
-                          color: Colors.grey,
+                          color: Colors.black,
                         ),
                       ),
                       SizedBox(height: 8),
                       Text(
                         'Fügen Sie zuerst historische Daten hinzu',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: Colors.black),
                       ),
                     ],
                   ),
@@ -156,7 +156,7 @@ class _StatistikPageState extends State<StatistikPage> {
           title,
           style: const TextStyle(
             fontSize: 12,
-            color: Colors.grey,
+            color: Colors.black,
           ),
           textAlign: TextAlign.center,
         ),
