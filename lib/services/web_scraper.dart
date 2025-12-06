@@ -9,6 +9,12 @@ class WinnersystemScraper {
   String lastError = '';
   int _importCounter = 0;
 
+  // NEU: Alternative Datenquellen
+  final Map<String, String> alternativeSources = {
+    'lottozahlen': 'https://www.lottozahlenonline.de/lotto/6aus49/archiv/',
+    'lottoarchiv': 'https://www.lottoarchiv.de/lotto/6aus49/',
+  };
+
   // Hauptfunktion: Importiere ein bestimmtes Jahr
   Future<ScraperResult> importYear(String spieltyp, int jahr) async {
     print('🔄 Starte Import für $spieltyp Jahr $jahr...');
@@ -31,7 +37,7 @@ class WinnersystemScraper {
         lastError = 'Website hat den Zugriff blockiert (Cloudflare Protection)';
         result.success = false;
         result.errorMessage = lastError;
-        result.suggestion = 'Bitte manuell über CSV importieren';
+        result.suggestion = 'Bitte manuell über Text importieren oder alternative Quelle verwenden';
         return result;
       }
       
@@ -70,6 +76,207 @@ class WinnersystemScraper {
     
     return result;
   }
+  
+  // NEU: Import von alternativer Quelle
+  Future<ScraperResult> importFromAlternativeSource(String source, int jahr) async {
+    print('🔄 Versuche alternative Quelle: $source für Jahr $jahr');
+    
+    final result = ScraperResult();
+    
+    try {
+      String url;
+      
+      switch (source) {
+        case 'lottozahlen':
+          url = 'https://www.lottozahlenonline.de/lotto/6aus49/archiv/$jahr.html';
+          break;
+        default:
+          url = 'https://www.lottoarchiv.de/lotto/6aus49/$jahr/';
+      }
+      
+      print('📡 Lade alternative URL: $url');
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: _getHeaders(),
+      );
+      
+      if (response.statusCode == 200) {
+        // Versuche verschiedene Parsing-Methoden
+        final ziehungen = _parseAlternativeSource(response.body, jahr);
+        
+        if (ziehungen.isNotEmpty) {
+          for (var ziehung in ziehungen) {
+            await EinfacheLottoDatenbank.fuegeZiehungHinzu(ziehung);
+          }
+          
+          result.success = true;
+          result.importedCount = ziehungen.length;
+          result.message = 'Erfolgreich ${ziehungen.length} Ziehungen von $source importiert';
+        } else {
+          result.success = false;
+          result.errorMessage = 'Konnte keine Daten von $source extrahieren';
+          result.suggestion = 'Bitte manuell über Text importieren';
+        }
+      } else {
+        result.success = false;
+        result.errorMessage = 'Alternative Quelle nicht erreichbar (${response.statusCode})';
+      }
+      
+    } catch (e) {
+      result.success = false;
+      result.errorMessage = 'Fehler mit alternativer Quelle: $e';
+    }
+    
+    return result;
+  }
+  
+  // NEU: Import von eigener URL
+  Future<ScraperResult> importFromCustomUrl(String url, int jahr) async {
+    print('🔄 Import von eigener URL: $url');
+    
+    final result = ScraperResult();
+    
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: _getHeaders(),
+      );
+      
+      if (response.statusCode == 200) {
+        // Versuche zu parsen
+        final ziehungen = _parseGenericHtml(response.body, jahr);
+        
+        if (ziehungen.isNotEmpty) {
+          for (var ziehung in ziehungen) {
+            await EinfacheLottoDatenbank.fuegeZiehungHinzu(ziehung);
+          }
+          
+          result.success = true;
+          result.importedCount = ziehungen.length;
+          result.message = 'Erfolgreich ${ziehungen.length} Ziehungen importiert';
+        } else {
+          // Falls Parsing fehlschlägt, zeige den HTML-Code für manuelles Kopieren
+          result.success = false;
+          result.errorMessage = 'Automatisches Parsing fehlgeschlagen';
+          result.suggestion = 'Bitte kopieren Sie die Lottozahlen manuell aus der Seite';
+          
+          // Debug: Zeige ersten 500 Zeichen des HTML
+          print('📄 HTML-Vorschau: ${response.body.substring(0, 500)}...');
+        }
+      } else {
+        result.success = false;
+        result.errorMessage = 'URL nicht erreichbar (${response.statusCode})';
+      }
+      
+    } catch (e) {
+      result.success = false;
+      result.errorMessage = 'Fehler beim Zugriff auf URL: $e';
+    }
+    
+    return result;
+  }
+  
+  // NEU: Generischer HTML-Parser für verschiedene Quellen
+  List<LottoZiehung> _parseGenericHtml(String html, int jahr) {
+    final ziehungen = <LottoZiehung>[];
+    
+    try {
+      // Methode 1: Suche nach Tabellen mit Lottozahlen
+      final tableRegex = RegExp(r'<table[^>]*>.*?(\d{1,2}\.\d{1,2}\.\d{4}).*?(\d{1,2}).*?(\d{1,2}).*?(\d{1,2}).*?(\d{1,2}).*?(\d{1,2}).*?(\d{1,2})', 
+        caseSensitive: false, dotAll: true);
+      
+      final matches = tableRegex.allMatches(html);
+      
+      for (var match in matches) {
+        try {
+          final dateParts = match.group(1)!.split('.');
+          final zahlen = [
+            int.parse(match.group(2)!),
+            int.parse(match.group(3)!),
+            int.parse(match.group(4)!),
+            int.parse(match.group(5)!),
+            int.parse(match.group(6)!),
+            int.parse(match.group(7)!),
+          ];
+          
+          // Validiere
+          if (zahlen.every((n) => n >= 1 && n <= 49)) {
+            final ziehung = LottoZiehung(
+              datum: DateTime(
+                int.parse(dateParts[2]),
+                int.parse(dateParts[1]),
+                int.parse(dateParts[0]),
+              ),
+              zahlen: zahlen,
+              superzahl: 0,
+              spieltyp: '6aus49',
+            );
+            
+            ziehungen.add(ziehung);
+            print('✅ Gefunden: ${ziehung.formatierterDatum} ${zahlen.join(',')}');
+          }
+        } catch (e) {
+          // Nächsten Versuch
+        }
+      }
+      
+      // Methode 2: Falls Tabelle nicht gefunden, suche nach einfachen Zahlenmustern
+      if (ziehungen.isEmpty) {
+        return WinnersystemParser.parseSimple(html);
+      }
+      
+    } catch (e) {
+      print('⚠️ Generisches Parsing fehlgeschlagen: $e');
+    }
+    
+    return ziehungen;
+  }
+  
+  // NEU: Parser für alternative Quellen
+  List<LottoZiehung> _parseAlternativeSource(String html, int jahr) {
+    final ziehungen = <LottoZiehung>[];
+    
+    // Versuche erst generisches Parsing
+    ziehungen.addAll(_parseGenericHtml(html, jahr));
+    
+    // Falls nichts gefunden, versuche spezifische Muster
+    if (ziehungen.isEmpty) {
+      // Suche nach div-Klassen die Lottozahlen enthalten könnten
+      final numberDivs = RegExp(r'<div[^>]*class="[^"]*lotto[^"]*"[^>]*>.*?(\d{1,2}).*?(\d{1,2}).*?(\d{1,2}).*?(\d{1,2}).*?(\d{1,2}).*?(\d{1,2})',
+        caseSensitive: false, dotAll: true).allMatches(html);
+      
+      int counter = 0;
+      for (var match in numberDivs) {
+        try {
+          final zahlen = [
+            int.parse(match.group(1)!),
+            int.parse(match.group(2)!),
+            int.parse(match.group(3)!),
+            int.parse(match.group(4)!),
+            int.parse(match.group(5)!),
+            int.parse(match.group(6)!),
+          ];
+          
+          if (zahlen.every((n) => n >= 1 && n <= 49)) {
+            counter++;
+            ziehungen.add(LottoZiehung(
+              datum: DateTime(jahr, 1, 1).add(Duration(days: counter * 7)),
+              zahlen: zahlen,
+              superzahl: 0,
+              spieltyp: '6aus49',
+            ));
+          }
+        } catch (e) {
+          // Weiter
+        }
+      }
+    }
+    
+    return ziehungen;
+  }
+  
+  // [Rest des Codes bleibt gleich wie vorher...]
   
   // NEU: Import für kopierte Tabellendaten von winnersystem.org
   Future<ScraperResult> importWinnersystemTable(String rawText) async {
@@ -158,7 +365,7 @@ class WinnersystemScraper {
         } else {
           result.success = false;
           result.errorMessage = 'Konnte keine Daten aus dem Text extrahieren';
-          result.suggestion = 'Bitte verwenden Sie das Format: "01.02.2023 3 7 12 25 34 42 SZ:8"';
+          result.suggestion = 'Bitte verwenden Sie das Format: "01.02.2023 3 7 12 25 34 42"';
         }
       }
       
@@ -202,6 +409,8 @@ class WinnersystemScraper {
       'DDoS protection',
       'Please enable JavaScript',
       'Verifying your browser',
+      'Access denied',
+      'Security check',
     ];
     
     for (var indicator in blockedIndicators) {
@@ -228,11 +437,25 @@ class WinnersystemScraper {
       if (allNumbers.length >= 6) {
         _importCounter++;
         
+        // Versuche Datum zu extrahieren
+        DateTime? datum;
+        final dateMatch = RegExp(r'(\d{1,2})\.(\d{1,2})\.(\d{4})').firstMatch(line);
+        if (dateMatch != null) {
+          datum = DateTime(
+            int.parse(dateMatch.group(3)!),
+            int.parse(dateMatch.group(2)!),
+            int.parse(dateMatch.group(1)!),
+          );
+        } else {
+          // Fallback: Künstliches Datum
+          datum = DateTime.now().subtract(Duration(days: _importCounter * 7));
+        }
+        
         // Erste 6 Zahlen verwenden
         final zahlen = allNumbers.sublist(0, 6);
         
         return LottoZiehung(
-          datum: DateTime.now().subtract(Duration(days: _importCounter * 7)),
+          datum: datum,
           zahlen: zahlen,
           superzahl: 0,
           spieltyp: spieltyp,
