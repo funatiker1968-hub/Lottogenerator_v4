@@ -260,7 +260,7 @@ class _StatistikPageState extends State<StatistikPage> {
   }
 
   Color _getZahlenFarbe(int haeufigkeit) {
-    if (haeufigkeit == 0) return Colors.grey[300]!;
+    if (haeufigkeit == 0) return Colors.grey[100]!;
     if (haeufigkeit <= 5) return Colors.blue[300]!;
     if (haeufigkeit <= 10) return Colors.blue[500]!;
     if (haeufigkeit <= 15) return Colors.blue[700]!;
