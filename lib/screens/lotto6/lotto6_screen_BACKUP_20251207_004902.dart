@@ -1,3 +1,4 @@
+// ============================================================================
 // BLOCK 1: IMPORTS & ROOT WIDGET
 // ============================================================================
 import 'dart:async';
@@ -321,62 +322,59 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     );
   }
 
-// ========================================================================
-// BLOCK 5: ZAHLEN-KUGELN UNTER DEM RASTER (NEUE VERSION – VARIANTE A)
-// ========================================================================
-/// Footer-Kugeln: kleine stabile Lotto-Bälle (16 px) innerhalb 24 px Höhe.
-/// - Keine Layout-Verschiebungen (Portrait/Landscape)
-/// - Favoriten = rot, normale = blau
-/// - Identische Funktion wie zuvor, nur stabilisiert
-Widget _buildTipFooterNumbers(int tipIndex) {
-  final selected = _selectedPerTip[tipIndex].toList()..sort();
-  final fav = _favoritePerTip[tipIndex];
+  // ========================================================================
+  // BLOCK 5: ZAHLEN-KUGELN UNTER DEM RASTER
+  // ========================================================================
+  /// Kugeln unter dem Raster: sortiert, Favoriten dunkelrot, andere dunkelblau
+  Widget _buildTipFooterNumbers(int tipIndex) {
+    final selected = _selectedPerTip[tipIndex].toList()..sort();
+    final fav = _favoritePerTip[tipIndex];
 
-  // Immer feste Höhe von 24 px, damit alle Karten gleich bleiben
-  if (selected.isEmpty) {
-    return const SizedBox(height: 24);
-  }
+    if (selected.isEmpty) {
+      // feste Höhe, damit die Karten optisch gleich bleiben
+      return const SizedBox(height: 24);
+    }
 
-  return SizedBox(
-    height: 24,
-    child: Center(
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 3,
-        runSpacing: 0,
-        children: [
-          for (final n in selected)
-            Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF6C0), // gleiche Optik wie vorher
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: fav.contains(n)
-                      ? Colors.red.shade900
-                      : Colors.blue.shade900,
-                  width: fav.contains(n) ? 1.4 : 1.1,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  '$n',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
+    return SizedBox(
+      height: 24,
+      child: Center(
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 4,
+          runSpacing: 2,
+          children: [
+            for (final n in selected)
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF6C0), // hellgelbe Kugel
+                  shape: BoxShape.circle,
+                  border: Border.all(
                     color: fav.contains(n)
                         ? Colors.red.shade900
                         : Colors.blue.shade900,
+                    width: fav.contains(n) ? 1.6 : 1.2,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    '$n',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: fav.contains(n)
+                          ? Colors.red.shade900
+                          : Colors.blue.shade900,
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // ========================================================================
   // BLOCK 6: TAP-LOGIK, FAVORITEN & QUICKTIPP
