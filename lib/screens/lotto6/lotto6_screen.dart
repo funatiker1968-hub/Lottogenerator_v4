@@ -347,58 +347,67 @@ Widget _buildScheinMitFooterUndLeiste() {
   }
 
 // ========================================================================
-// BLOCK 5: ZAHLEN-KUGELN UNTER DEM RASTER (NEUE VERSION – VARIANTE A)
+// BLOCK 5: ZAHLEN-KUGELN UNTER DEM RASTER (VERBESSERTE VERSION)
 // ========================================================================
-/// Footer-Kugeln: kleine stabile Lotto-Bälle (16 px) innerhalb 24 px Höhe.
-/// - Keine Layout-Verschiebungen (Portrait/Landscape)
-/// - Favoriten = rot, normale = blau
-/// - Identische Funktion wie zuvor, nur stabilisiert
 Widget _buildTipFooterNumbers(int tipIndex) {
   final selected = _selectedPerTip[tipIndex].toList()..sort();
   final fav = _favoritePerTip[tipIndex];
 
-  // Immer feste Höhe von 24 px, damit alle Karten gleich bleiben
+  const double ballSize = 16;
+  const double spacing = 3;
+
   if (selected.isEmpty) {
-    return const SizedBox(height: 24);
+    return const SizedBox(height: ballSize); // minimale Höhe
   }
 
+  // Anzahl Kugeln → Anzahl Reihen
+  final int count = selected.length;
+  final int rows = (count / 6).ceil().clamp(1, 2);
+
+  // Footerhöhe = rows × Kugelhöhe + etwas Innenabstand
+  final double footerHeight = rows * (ballSize + spacing);
+
   return SizedBox(
-    height: 24,
-    child: Center(
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 3,
-        runSpacing: 0,
-        children: [
-          for (final n in selected)
-            Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF6C0), // gleiche Optik wie vorher
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: fav.contains(n)
-                      ? Colors.red.shade900
-                      : Colors.blue.shade900,
-                  width: fav.contains(n) ? 1.4 : 1.1,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  '$n',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
+    height: footerHeight,
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.start, // Kugeln OBEN ausrichten
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final n in selected)
+              Container(
+                width: ballSize,
+                height: ballSize,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF6C0),
+                  shape: BoxShape.circle,
+                  border: Border.all(
                     color: fav.contains(n)
                         ? Colors.red.shade900
                         : Colors.blue.shade900,
+                    width: fav.contains(n) ? 1.4 : 1.1,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    '$n',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: fav.contains(n)
+                          ? Colors.red.shade900
+                          : Colors.blue.shade900,
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
-      ),
+          ],
+        ),
+      ],
     ),
   );
 }
@@ -621,19 +630,23 @@ Widget _buildQuickBar() {
   // ========================================================================
   // BLOCK 9: LOSNUMMER-BOX MIT WALZEN (B3) + ORIGINAL-BESCHRIIFTUNG
   // ========================================================================
-  Widget _buildLosnummerBox() {
-    return Container(
-      height: 90,
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.black, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
+Widget _buildLosnummerBox() {
+  return Container(
+    height: 120, // erhöhte Höhe – jetzt passt nichts mehr über
+    padding: const EdgeInsets.all(6),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(4),
+      border: Border.all(color: Colors.black, width: 1),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+
+        // ⭐ Titel ---------------------------------------------------------
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
             'Losnummer',
             style: TextStyle(
               fontSize: 11,
@@ -641,88 +654,81 @@ Widget _buildQuickBar() {
               color: Colors.red,
             ),
           ),
-          const SizedBox(height: 4),
+        ),
+        const SizedBox(height: 4),
 
-          // Beschriftungen oben (GS + Super 6) – originalgetreu
-          Center(
-            child: Column(
-              children: [
-                const Text(
- 
-                 'GLÜCKSSPIRALE',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                Container(
-                  height: 1,
-                  width: 150, // über allen 7 Ziffern
-                  color: Colors.black,
-                  margin: const EdgeInsets.only(bottom: 2),
-                ),
-                const Text(
-                  'SUPER 6',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                Container(
-                  height: 1,
-                  width: 130, // etwas schmaler (über 2.–7. Ziffer)
-                  color: Colors.black,
-                  margin: const EdgeInsets.only(bottom: 6),
-                ),
-              ],
+        // ⭐ OBERER BLOCK – Glücksspirale & Super6 -------------------------
+        Column(
+          children: [
+            const Text(
+              'GLÜCKSSPIRALE',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-
-          // Walzen + Zufällig-Button (B3 Optik, Walzenlogik)
-          LosnummerWalzen(
-            targetNumber: _losnummer,
-            animationSeed: _losAnimationSeed,
-            onRandomPressed: () => setState(_generateNewLosnummer),
-          ),
-
-          const SizedBox(height: 4),
-
-          // Untere Linien & Beschriftung Spiel77 + Superzahl
-          Center(
-            child: Column(
-              children: [
-                Container(
-                  height: 1,
-                  width: 150, // über allen 7 Ziffern
-                  color: Colors.black,
-                  margin: const EdgeInsets.only(bottom: 2),
-                ),
-                const Text(
-                  'Spiel77',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Superzahl',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            Container(
+              height: 1,
+              width: 150,
+              color: Colors.black,
+              margin: const EdgeInsets.only(bottom: 2),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+            const Text(
+              'SUPER 6',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Container(
+              height: 1,
+              width: 130,
+              color: Colors.black,
+              margin: const EdgeInsets.only(bottom: 6),
+            ),
+          ],
+        ),
+
+        // ⭐ WALZEN + ZUFÄLLIG ----------------------------------------------
+        LosnummerWalzen(
+          targetNumber: _losnummer,
+          animationSeed: _losAnimationSeed,
+          onRandomPressed: () => setState(_generateNewLosnummer),
+        ),
+
+        const SizedBox(height: 4),
+
+        // ⭐ UNTERER BLOCK – Spiel77 / Superzahl ----------------------------
+        Column(
+          children: [
+            Container(
+              height: 1,
+              width: 150,
+              color: Colors.black,
+              margin: const EdgeInsets.only(bottom: 2),
+            ),
+            const Text(
+              'Spiel77',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              'Superzahl',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildZusatzspieleBox() {
     return Container(
