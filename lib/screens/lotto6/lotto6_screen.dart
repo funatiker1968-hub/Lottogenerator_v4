@@ -94,44 +94,69 @@ class _Lotto6ScreenState extends State<Lotto6Screen> {
     return _selectedPerTip.where((s) => s.isNotEmpty).length;
   }
 
-  // ========================================================================
-  // BLOCK 3: BUILD + HEADER
-  // ========================================================================
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFF6C0),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 6),
-            Expanded(child: _buildFullSchein()),
-            _buildBottomBar(),
-            _buildQuickBar(),
-          ],
-        ),
+// ========================================================================
+// BLOCK 3: BUILD + HEADER
+// ========================================================================
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: const Color(0xFFFFF6C0),
+    body: SafeArea(
+      child: Column(
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 6),
+          // Alles unter dem Header ist zoombar + scrollbar
+          Expanded(
+            child: InteractiveViewer(
+              panEnabled: true,
+              scaleEnabled: true,
+              minScale: 0.6,
+              maxScale: 2.0,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Center(
+                  child: _buildScheinMitFooterUndLeiste(),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildHeader() {
-    return Container(
-      height: 56,
-      width: double.infinity,
-      color: const Color(0xFFFFD000),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      alignment: Alignment.centerLeft,
-      child: const Text(
-        'LOTTOZAHLEN-GENERATOR',
-        style: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w900,
-          color: Colors.red,
-        ),
+Widget _buildHeader() {
+  return Container(
+    height: 56,
+    width: double.infinity,
+    color: const Color(0xFFFFD000),
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    alignment: Alignment.centerLeft,
+    child: const Text(
+      'LOTTOZAHLEN-GENERATOR',
+      style: TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w900,
+        color: Colors.red,
       ),
-    );
-  }
+    ),
+  );
+ }
+// Kompletter Scheinbereich: Tippfelder + Info-Boxen + Quicktipp-Leiste
+Widget _buildScheinMitFooterUndLeiste() {
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _buildFullSchein(),       // deine 12 Tippfelder
+      const SizedBox(height: 8),
+      _buildBottomBar(),        // Losnummer + Zusatzspiele + Ziehung + Einsatz
+      const SizedBox(height: 6),
+      _buildQuickBar(),         // Quicktipp + Löschen
+    ],
+  );
+}
 
   // ========================================================================
   // BLOCK 4: GESAMTER LOTTO-SCHEIN + TIPP-KARTEN
@@ -512,73 +537,61 @@ Widget _buildTipFooterNumbers(int tipIndex) {
     _favoritePerTip[tipIndex].clear();
   }
 
-  // ========================================================================
-  // BLOCK 7: QUICKTIP-LEISTE
-  // ========================================================================
-  Widget _buildQuickBar() {
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFFE0E0E0),
-        border: Border(
-          top: BorderSide(color: Colors.black54, width: 1),
-          bottom: BorderSide(color: Colors.black54, width: 1),
+// ========================================================================
+// BLOCK 7: QUICKTIP-LEISTE
+// ========================================================================
+Widget _buildQuickBar() {
+  return Container(
+    height: 44,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: const BoxDecoration(
+      color: Color(0xFFE0E0E0),
+      border: Border(
+        top: BorderSide(color: Colors.black54, width: 1),
+        bottom: BorderSide(color: Colors.black54, width: 1),
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ElevatedButton(
+          onPressed: () {
+            setState(() {
+              for (int i = 0; i < tipCount; i++) {
+                _generateRandomTip(i);
+              }
+            });
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          ),
+          child: const Text('Quicktipp', style: TextStyle(fontSize: 12)),
         ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _qbtn('Teilnahme'),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                for (int i = 0; i < tipCount; i++) {
-                  _generateRandomTip(i);
-                }
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            ),
-            child: const Text('Quicktipp', style: TextStyle(fontSize: 12)),
+        const SizedBox(width: 12),
+        ElevatedButton(
+          onPressed: () {
+            setState(() {
+              for (int i = 0; i < tipCount; i++) {
+                _clearTip(i);
+              }
+            });
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            side: const BorderSide(color: Colors.black),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                for (int i = 0; i < tipCount; i++) {
-                  _clearTip(i);
-                }
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              side: const BorderSide(color: Colors.black),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            ),
-            child: const Text('Löschen', style: TextStyle(fontSize: 12)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _qbtn(String text) {
-    return ElevatedButton(
-      onPressed: () {},
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        side: const BorderSide(color: Colors.black, width: 1),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      ),
-      child: Text(text, style: const TextStyle(fontSize: 12)),
-    );
-  }
-
+          child: const Text('Löschen', style: TextStyle(fontSize: 12)),
+        ),
+      ],
+    ),
+  );
+}
   // ========================================================================
   // BLOCK 8: UNTERE FUNKTIONS-LEISTE (LOSNUMMER, ZUSATZ, ZIEHUNG, EINSATZ)
   // ========================================================================
@@ -635,7 +648,8 @@ Widget _buildTipFooterNumbers(int tipIndex) {
             child: Column(
               children: [
                 const Text(
-                  'GLÜCKSSPIRALE',
+ 
+                 'GLÜCKSSPIRALE',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
