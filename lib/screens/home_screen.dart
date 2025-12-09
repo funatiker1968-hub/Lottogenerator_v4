@@ -193,3 +193,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+// --- Nach dem bestehenden UI-Code z.B. in einer Button- oder Menü-Liste hinzufügen: ---
+ElevatedButton(
+  onPressed: () {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const ImportScreen()),
+    );
+  },
+  child: const Text('Lotto-Import'),
+),
