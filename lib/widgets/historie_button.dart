@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
 
 class HistorieButton extends StatelessWidget {
-  final AudioPlayer audioPlayer;
-  
-  const HistorieButton({super.key, required this.audioPlayer});
+  const HistorieButton({super.key});
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.history),
+      tooltip: 'Historie ansehen',
       onPressed: () {
-        audioPlayer.play(AssetSource('sounds/click.mp3'));
-        Navigator.pushNamed(context, '/historie');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Historie-Funktion kommt später.')),
+        );
       },
-      tooltip: 'Historische Daten',
     );
   }
 }

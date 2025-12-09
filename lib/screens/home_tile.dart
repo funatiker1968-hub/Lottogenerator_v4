@@ -2,140 +2,60 @@ import 'package:flutter/material.dart';
 
 class HomeTile extends StatelessWidget {
   final String title;
-  final String subtitle;
-  final String drawDaysText;
-  final String countdownText;
-  final List<String> lastDrawLines;
+  final IconData icon;
   final Color color;
-  final Color textColor;
-  final bool hatEchteDaten;
-  final VoidCallback onTap;
+  final String route;
 
   const HomeTile({
-    super.key,
+    Key? key,
     required this.title,
-    required this.subtitle,
-    required this.drawDaysText,
-    required this.countdownText,
-    required this.lastDrawLines,
+    required this.icon,
     required this.color,
-    required this.textColor,
-    required this.hatEchteDaten,
-    required this.onTap,
-  });
+    required this.route,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final shadow = [
-      BoxShadow(
-        color: Colors.black.withOpacity(0.20),
-        blurRadius: 18,
-        spreadRadius: 2,
-        offset: const Offset(4, 8),
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-    ];
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: onTap,
-      child: Ink(
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: shadow,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.pushNamed(context, route);
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            // Korrigiert: ohne withOpacity()
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withAlpha(230), // Statt withOpacity(0.9)
+                Color.alphaBlend(color.withAlpha(204), Colors.black12), // Statt withOpacity(0.8)
+              ],
+            ),
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Titel + LIVE-Indikator
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                    ),
-                  ),
-                  if (hatEchteDaten)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'LIVE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
+              Icon(
+                icon,
+                size: 48,
+                color: Colors.white,
               ),
-
-              const SizedBox(height: 8),
-
-              // Untertitel
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: textColor.withOpacity(0.9),
-                ),
-              ),
-
               const SizedBox(height: 12),
-
-              // Ziehungen
               Text(
-                hatEchteDaten ? 'Aktuelle Ziehungen:' : 'Beispiel-Ziehungen:',
-                style: TextStyle(
-                  fontSize: 13,
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: textColor.withOpacity(0.9),
                 ),
-              ),
-              const SizedBox(height: 4),
-
-              for (final line in lastDrawLines)
-                Text(
-                  line,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textColor.withOpacity(0.9),
-                  ),
-                ),
-
-              const Spacer(),
-
-              // Ziehungsinfo + Countdown
-              Text(
-                drawDaysText,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: textColor.withOpacity(0.9),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                countdownText,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),

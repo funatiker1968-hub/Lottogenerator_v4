@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-
 import 'home_tile.dart';
-import 'lotto_6aus49_screen.dart';
-import 'eurojackpot_screen.dart';
 
 class HomeTilesBlock extends StatelessWidget {
   final bool isPortrait;
-
   final String lottoCountdown;
   final String euroCountdown;
-
   final List<String> lottoLines;
   final List<String> euroLines;
 
@@ -24,95 +19,182 @@ class HomeTilesBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Verwende die existierende HomeTile Klasse mit korrekten Parametern
+    final lottoTile = HomeTile(
+      title: 'Lotto 6aus49',
+      icon: Icons.numbers,
+      color: Colors.blue,
+      route: '/lotto6',
+    );
+
+    final euroTile = HomeTile(
+      title: 'EuroJackpot',
+      icon: Icons.euro,
+      color: Colors.green,
+      route: '/eurojackpot',
+    );
+
+    // Erweiterte Tiles für zusätzliche Info
+    final statistikTile = HomeTile(
+      title: 'Statistik',
+      icon: Icons.bar_chart,
+      color: Colors.orange,
+      route: '/statistik',
+    );
+
+    final historieTile = HomeTile(
+      title: 'Historie',
+      icon: Icons.history,
+      color: Colors.purple,
+      route: '/historie',
+    );
+
+    // Layout basierend auf Ausrichtung
     if (isPortrait) {
       return Column(
         children: [
+          // Erste Zeile: Lotto und EuroJackpot
+          Row(
+            children: [
+              Expanded(child: lottoTile),
+              const SizedBox(width: 16),
+              Expanded(child: euroTile),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Info Container für Countdowns
+          _buildInfoContainer(context),
+          const SizedBox(height: 16),
+          // Zweite Zeile: Statistik und Historie
+          Row(
+            children: [
+              Expanded(child: statistikTile),
+              const SizedBox(width: 16),
+              Expanded(child: historieTile),
+            ],
+          ),
+        ],
+      );
+    } else {
+      // Landscape Layout
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Linke Spalte: Tiles
           Expanded(
-            child: HomeTile(
-              title: 'Lotto 6aus49',
-              subtitle: '12 Tippfelder im Scheinstil mit Superzahl',
-              drawDaysText: 'Ziehungen: Mittwoch & Samstag',
-              countdownText: lottoCountdown,
-              lastDrawLines: lottoLines,
-              color: Colors.yellow.shade700,
-              textColor: Colors.black,
-              hatEchteDaten: lottoLines.length > 2,
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const Lotto6aus49Screen(),
-                  ),
-                );
-              },
+            flex: 2,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: lottoTile),
+                    const SizedBox(width: 16),
+                    Expanded(child: euroTile),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: statistikTile),
+                    const SizedBox(width: 16),
+                    Expanded(child: historieTile),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(width: 16),
+          // Rechte Spalte: Info
           Expanded(
-            child: HomeTile(
-              title: 'Eurojackpot',
-              subtitle: '8 Tippfelder + 2 Eurozahlen',
-              drawDaysText: 'Ziehungen: Dienstag & Freitag',
-              countdownText: euroCountdown,
-              lastDrawLines: euroLines,
-              color: Colors.blue.shade600,
-              textColor: Colors.white,
-              hatEchteDaten: euroLines.length > 2,
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const EurojackpotScreen(),
-                  ),
-                );
-              },
-            ),
+            flex: 1,
+            child: _buildInfoContainer(context),
           ),
         ],
       );
     }
+  }
 
-    // Querformat
+  Widget _buildInfoContainer(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Nächste Ziehungen',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildCountdownRow('Lotto 6aus49', lottoCountdown),
+          const SizedBox(height: 8),
+          _buildCountdownRow('EuroJackpot', euroCountdown),
+          const Divider(height: 24),
+          const Text(
+            'Letzte Ziehungen',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._buildLastDrawsInfo('Lotto:', lottoLines),
+          const SizedBox(height: 8),
+          ..._buildLastDrawsInfo('EuroJackpot:', euroLines),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCountdownRow(String label, String countdown) {
     return Row(
       children: [
         Expanded(
-          child: HomeTile(
-            title: 'Lotto 6aus49',
-            subtitle: '12 Tippfelder im Scheinstil mit Superzahl',
-            drawDaysText: 'Ziehungen: Mittwoch & Samstag',
-            countdownText: lottoCountdown,
-            lastDrawLines: lottoLines,
-            color: Colors.yellow.shade700,
-            textColor: Colors.black,
-            hatEchteDaten: lottoLines.length > 2,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const Lotto6aus49Screen(),
-                ),
-              );
-            },
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 14),
           ),
         ),
-        const SizedBox(width: 20),
-        Expanded(
-          child: HomeTile(
-            title: 'Eurojackpot',
-            subtitle: '8 Tippfelder + 2 Eurozahlen',
-            drawDaysText: 'Ziehungen: Dienstag & Freitag',
-            countdownText: euroCountdown,
-            lastDrawLines: euroLines,
-            color: Colors.blue.shade600,
-            textColor: Colors.white,
-            hatEchteDaten: euroLines.length > 2,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const EurojackpotScreen(),
-                ),
-              );
-            },
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.blueGrey[100],
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            countdown,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ],
     );
+  }
+
+  List<Widget> _buildLastDrawsInfo(String title, List<String> lines) {
+    return [
+      Text(
+        title,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+      ...lines.map((line) => Padding(
+            padding: const EdgeInsets.only(left: 8.0, top: 2),
+            child: Text(
+              line,
+              style: const TextStyle(fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          )),
+    ];
   }
 }
