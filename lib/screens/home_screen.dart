@@ -8,7 +8,8 @@ import 'import_screen.dart';
 
 import '../models/lotto_data.dart';
 import '../services/lotto_database_erweitert.dart' as erweiterteDB;
-import '../services/auto_import_service.dart';
+import '../widgets/historie_button.dart';
+import '../widgets/statistik_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,31 +26,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<LottoZiehung> _lottoZiehungen = [];
   List<LottoZiehung> _euroZiehungen = [];
-
   bool _datenLaden = false;
 
   @override
   void initState() {
     super.initState();
-
     _updateCountdowns();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateCountdowns());
-
     _ladeEchteDaten();
-
-    // 🔥 Automatischer Import beim Start – mit Live-Anzeige
-    AutoImportService.starteAutomatischenImport(_zeigeStatus);
-  }
-
-  // Snackbar-Ausgabe
-  void _zeigeStatus(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   Future<void> _ladeEchteDaten() async {
@@ -107,7 +91,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   DateTime _nextDraw(DateTime now, List<int> days, int hour, int minute) {
     DateTime d = DateTime(now.year, now.month, now.day, hour, minute);
-
     if (days.contains(now.weekday) && d.isAfter(now)) return d;
 
     for (int i = 1; i <= 7; i++) {
@@ -116,7 +99,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return DateTime(d.year, d.month, d.day, hour, minute);
       }
     }
-
     return d;
   }
 
@@ -130,31 +112,31 @@ class _HomeScreenState extends State<HomeScreen> {
     final secs = sec % 60;
 
     final dStr = days > 0 ? '${days}T ' : '';
-    return '$dStr${hours.toString().padLeft(2,'0')}'
-        ':${mins.toString().padLeft(2,'0')}'
-        ':${secs.toString().padLeft(2,'0')}';
+    return '$dStr${hours.toString().padLeft(2, '0')}:'
+        '${mins.toString().padLeft(2, '0')}:'
+        '${secs.toString().padLeft(2, '0')}';
   }
 
   List<String> get _lottoLines =>
       _lottoZiehungen.isEmpty ? ['–'] : _lottoZiehungen.map(_fmtZiehung).toList();
 
   List<String> get _euroLines =>
-      _euroZiehungen.isEmpty ? ['–'] : _euroZiehungen.map(_fmtEuro).toList();
+      _euroZiehungen.isEmpty ? ['–'] : _euroZiehungen.map(_fmtEuroZiehung).toList();
 
   String _fmtZiehung(LottoZiehung z) {
     final w = ['Mo','Di','Mi','Do','Fr','Sa','So'][z.datum.weekday - 1];
     final d = z.formatierterDatum;
-    final nums = z.zahlen.take(6).map((e) => e.toString().padLeft(2,'0')).join(' ');
+    final nums = z.zahlen.take(6).map((e)=>e.toString().padLeft(2,'0')).join(' ');
     return '$w $d: $nums | SZ: ${z.superzahl}';
   }
 
-  String _fmtEuro(LottoZiehung z) {
+  String _fmtEuroZiehung(LottoZiehung z) {
     final w = ['Mo','Di','Mi','Do','Fr','Sa','So'][z.datum.weekday - 1];
     final d = z.formatierterDatum;
 
     if (z.zahlen.length >= 7) {
-      final h = z.zahlen.take(5).map((e) => e.toString().padLeft(2,'0')).join(' ');
-      final e = z.zahlen.skip(5).take(2).map((e) => e.toString().padLeft(2,'0')).join(', ');
+      final h = z.zahlen.take(5).map((e)=>e.toString().padLeft(2,'0')).join(' ');
+      final e = z.zahlen.skip(5).take(2).map((e)=>e.toString().padLeft(2,'0')).join(', ');
       return '$w $d: $h | Euro: $e';
     }
 
@@ -163,7 +145,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    final orientation = MediaQuery.of(context).orientation;
+    final isPortrait = orientation == Orientation.portrait;
 
     return Scaffold(
       appBar: AppBar(
@@ -172,12 +155,12 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_datenLaden)
             const Padding(
               padding: EdgeInsets.all(8.0),
-              child: SizedBox(
-                width: 16,
-                height: 16,
+              child: SizedBox(width: 16, height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
+          const StatistikButton(),
+          const HistorieButton(),
         ],
       ),
       body: Padding(

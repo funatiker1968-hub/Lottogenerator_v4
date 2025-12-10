@@ -1,10 +1,8 @@
-import com.android.build.api.dsl.ApplicationExtension
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.io.File
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("dev.flutter.flutter-gradle-plugin")
+    id("kotlin-android")
 }
 
 android {
@@ -13,42 +11,20 @@ android {
 
     defaultConfig {
         applicationId = "com.example.lottogenerator_v4"
-        minSdk = 21
+        minSdk = 21            // <<< WICHTIG für audioplayers
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
     }
 
     buildTypes {
-        getByName("release") {
-            // Kein Code-Shrinker, kein Resource-Shrinker -> sicher & einfach
+        release {
             isMinifyEnabled = false
-            isShrinkResources = false
-
-            // Debug-Signing, bis wir später echtes Keystore-Signing machen
-            signingConfig = signingConfigs.getByName("debug")
-
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
         }
-        getByName("debug") {
-            isMinifyEnabled = false
-            isShrinkResources = false
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
 }
 
-flutter {
-    source = "../.."
+dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.22")
 }
+
