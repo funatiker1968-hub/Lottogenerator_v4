@@ -1,49 +1,83 @@
 import 'package:http/http.dart' as http;
-import 'package:html/parser.dart' as parser;
-
+import 'package:html/parser.dart' show parse;
 import '../models/lotto_data.dart';
-import 'lotto_import_safe.dart';
 
 class LottozahlenOnlineScraper {
-  final LottoImportSafe importer;
+  final String spieltyp;
 
-  LottozahlenOnlineScraper(this.importer);
+  LottozahlenOnlineScraper(this.spieltyp);
 
-  Future<void> ladeJahr(int jahr) async {
-    final url =
-        "https://www.lottozahlenonline.de/statistik/beide-spieltage/lottozahlen-archiv.php?j=$jahr";
+  /// Lädt alle Ziehungen eines Jahres über lotto.de
+  Future<List<LottoZiehung>> ladeJahr(int jahr) async {
+    final List<LottoZiehung> result = [];
 
-    final r = await http.get(Uri.parse(url));
-    if (r.statusCode != 200) return;
+    final url = _buildUrl(jahr);
+    final resp = await http.get(Uri.parse(url));
 
-    final doc = parser.parse(r.body);
-    final rows = doc.querySelectorAll("table.archiv tbody tr");
-
-    final liste = <LottoZiehung>[];
-
-    for (final row in rows) {
-      final cols = row.querySelectorAll("td");
-      if (cols.length < 2) continue;
-
-      final rawDate = cols[0].text.trim();
-      final zahlenString = cols[1].text.trim();
-
-      final zahlen = zahlenString
-          .split(" ")
-          .where((x) => x.isNotEmpty)
-          .map((e) => int.tryParse(e) ?? 0)
-          .toList();
-
-      if (zahlen.length < 7) continue;
-
-      liste.add(LottoZiehung(
-        datum: LottoZiehung.parseDatum(rawDate),
-        zahlen: zahlen,
-        superzahl: zahlen.last,
-        spieltyp: "6aus49", // später automatisieren
-      ));
+    if (resp.statusCode != 200) {
+      print("Fehler beim Laden: ${resp.statusCode}");
+      return result;
     }
 
-    await importer.fuegeZiehungenEin(liste);
+    final document = parse(resp.body);
+    final rows = document.querySelectorAll("table tbody tr");
+
+    for (final r in rows) {
+      final cols = r.querySelectorAll("td");
+      if (cols.length < 3) continue;
+
+      final datumText = cols[0].text.trim();
+      final zahlenText = cols[1].text.trim();
+
+      final date = _parseDatum(datumText);
+      final zahlen = _parseZahlen(zahlenText);
+
+      if (date != null && zahlen.isNotEmpty) {
+        result.add(LottoZiehung(
+          datum: date,
+          spieltyp: spieltyp,
+          zahlen: zahlen,
+          superzahl: zahlen.length > 6 ? zahlen.last : 0,
+        ));
+      }
+    }
+
+    return result;
+  }
+
+  /// URL je nach Spieltyp
+  String _buildUrl(int jahr) {
+    if (spieltyp == "6aus49") {
+      return "https://www.lotto.de/lotto-6aus49/archiv-${jahr}";
+    } else if (spieltyp == "Eurojackpot") {
+      return "https://www.lotto.de/eurojackpot/archiv-${jahr}";
+    }
+    throw Exception("Unbekannter Spieltyp: $spieltyp");
+  }
+
+  /// Datum im Format 01.02.2023 → DateTime
+  DateTime? _parseDatum(String input) {
+    try {
+      final parts = input.split('.');
+      if (parts.length != 3) return null;
+
+      final tag = int.parse(parts[0]);
+      final mon = int.parse(parts[1]);
+      final jahr = int.parse(parts[2]);
+
+      return DateTime(jahr, mon, tag);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Zahlenliste „1 2 3 4 5 6 (SZ 7)“
+  List<int> _parseZahlen(String input) {
+    final cleaned = input.replaceAll(RegExp(r'[^0-9 ]'), '');
+    return cleaned
+        .split(' ')
+        .where((e) => e.trim().isNotEmpty)
+        .map(int.parse)
+        .toList();
   }
 }

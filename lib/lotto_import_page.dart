@@ -1,12 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/multi_lotto_importer.dart';
-
-// Entferne oder ersetze ImporterResult
-// class ImporterResult {
-//   final bool success;
-//   final String message;
-//   ImporterResult(this.success, this.message);
-// }
+import '../services/lotto_import_service.dart';
 
 class LottoImportPage extends StatefulWidget {
   const LottoImportPage({super.key});
@@ -16,102 +9,101 @@ class LottoImportPage extends StatefulWidget {
 }
 
 class _LottoImportPageState extends State<LottoImportPage> {
-  final MultiLottoImporter _importer = MultiLottoImporter();
-  bool _isImporting = false;
-  String _status = '';
-  
-  final TextEditingController _startYearController = TextEditingController();
-  final TextEditingController _endYearController = TextEditingController();
+  final _importService = LottoImportService();
+  final _start = TextEditingController(text: "1955");
+  final _ende = TextEditingController(text: "${DateTime.now().year}");
+  String _spieltyp = "6aus49";
 
-  Future<void> _importRange() async {
-    final start = int.tryParse(_startYearController.text) ?? DateTime.now().year;
-    final end = int.tryParse(_endYearController.text) ?? DateTime.now().year;
-    
+  bool _busy = false;
+  final List<String> _log = [];
+
+  void _append(String msg) {
+    setState(() => _log.add(msg));
+  }
+
+  Future<void> _startImport() async {
+    final s = int.tryParse(_start.text) ?? 1955;
+    final e = int.tryParse(_ende.text) ?? DateTime.now().year;
+
     setState(() {
-      _isImporting = true;
-      _status = 'Importiere Daten von $start bis $end...';
+      _busy = true;
+      _log.clear();
     });
 
-    try {
-      // Verwende die korrekte Methode aus MultiLottoImporter
-      await _importer.importiereJahresBereich(start, end); // Ändere den Methodennamen hier
-      
-      setState(() {
-        _status = 'Import erfolgreich! $start-$end importiert.';
-      });
-    } catch (e) {
-      setState(() {
-        _status = 'Fehler beim Import: $e';
-      });
-    } finally {
-      setState(() {
-        _isImporting = false;
-      });
-    }
+    await _importService.importBereich(
+      start: s,
+      ende: e,
+      spieltyp: _spieltyp,
+      status: _append,
+    );
+
+    setState(() => _busy = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Lotto Import'),
-      ),
+      appBar: AppBar(title: const Text("Lotto-Import")),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: _startYearController,
-              decoration: const InputDecoration(
-                labelText: 'Startjahr',
-                hintText: 'z.B. 2020',
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _start,
+                  decoration: const InputDecoration(labelText: "Startjahr"),
+                  keyboardType: TextInputType.number,
+                ),
               ),
-              keyboardType: TextInputType.number,
-            ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextField(
+                  controller: _ende,
+                  decoration: const InputDecoration(labelText: "Endjahr"),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ]),
             const SizedBox(height: 16),
-            TextField(
-              controller: _endYearController,
-              decoration: const InputDecoration(
-                labelText: 'Endjahr',
-                hintText: 'z.B. 2024',
-              ),
-              keyboardType: TextInputType.number,
+
+            DropdownButton<String>(
+              value: _spieltyp,
+              items: const [
+                DropdownMenuItem(value: "6aus49", child: Text("Lotto 6aus49")),
+                DropdownMenuItem(value: "Eurojackpot", child: Text("Eurojackpot")),
+              ],
+              onChanged: (v) => setState(() => _spieltyp = v!),
             ),
-            const SizedBox(height: 32),
+
+            const SizedBox(height: 16),
+
             ElevatedButton(
-              onPressed: _isImporting ? null : _importRange,
-              child: _isImporting
-                  ? const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(width: 8),
-                        Text('Importiere...'),
-                      ],
-                    )
-                  : const Text('Import starten'),
+              onPressed: _busy ? null : _startImport,
+              child: _busy
+                  ? const Text("Import läuft …")
+                  : const Text("Import starten"),
             ),
-            const SizedBox(height: 32),
-            if (_status.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
+
+            const SizedBox(height: 16),
+
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: Colors.black12,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(_status),
+                child: ListView(
+                  children: _log
+                      .map((e) => Text(e, style: const TextStyle(fontSize: 13)))
+                      .toList(),
+                ),
               ),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _startYearController.dispose();
-    _endYearController.dispose();
-    super.dispose();
   }
 }

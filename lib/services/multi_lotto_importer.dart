@@ -2,21 +2,22 @@ import '../services/lotto_database_erweitert.dart' as erweiterteDB;
 import '../models/lotto_data.dart';
 
 class MultiLottoImporter {
-  Future<void> importiereJahresBereich(int startJahr, int endJahr) async {
-    // Implementiere hier den Import-Logik
-    // Beispiel:
+  /// Import mit Fortschritt-Callback
+  Future<void> importiereJahresBereich(
+    int startJahr,
+    int endJahr,
+    void Function(String status) onProgress,
+  ) async {
     for (int jahr = startJahr; jahr <= endJahr; jahr++) {
-      // Import-Logik für jedes Jahr
-      print('Importiere Jahr: $jahr');
-      await Future.delayed(const Duration(milliseconds: 100));
+      onProgress("Importiere Jahr $jahr ...");
+
+      // Hier später echte Import-Logik einsetzen
+      await Future.delayed(const Duration(milliseconds: 400));
+
+      // Platzhalter für echte Datenbank-Schritte:
+      // await erweiterteDB.ErweiterteLottoDatenbank.fuegeZiehungHinzu(...);
     }
-  }
-  
-  // Statt EinfacheLottoDatenbank, verwende erweiterteDB
-  Future<List<LottoZiehung>> _holeDatenAusDatenbank(String spieltyp, int limit) async {
-    return await erweiterteDB.ErweiterteLottoDatenbank.holeLetzteZiehungen(
-      spieltyp: spieltyp,
-      limit: limit,
-    );
+
+    onProgress("Import abgeschlossen.");
   }
 }

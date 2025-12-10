@@ -7,11 +7,9 @@ class StatistikButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.bar_chart),
-      tooltip: 'Statistik ansehen',
+      tooltip: 'Statistik',
       onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Statistik-Funktion kommt später.')),
-        );
+        Navigator.of(context).pushNamed('/statistik');
       },
     );
   }

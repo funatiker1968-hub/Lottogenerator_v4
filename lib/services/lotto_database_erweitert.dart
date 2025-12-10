@@ -3,100 +3,94 @@ import 'package:path/path.dart';
 import '../models/lotto_data.dart';
 
 class ErweiterteLottoDatenbank {
-  static const String _table = "ziehungen";
+  static Database? _db;
 
-  static Future<Database> _db() async {
-    final database = await openDatabase(
-      join(await getDatabasesPath(), 'lotto_database.db'),
+  // --- Datenbank laden oder erstellen ---
+  static Future<Database> _getDb() async {
+    if (_db != null) return _db!;
+
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, 'lottodaten.db');
+
+    _db = await openDatabase(
+      path,
       version: 1,
       onCreate: (db, version) async {
-        await db.execute(
-          "CREATE TABLE ziehungen("
-          "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-          "datum TEXT NOT NULL,"
-          "zahlen TEXT NOT NULL,"
-          "superzahl INTEGER NOT NULL,"
-          "spieltyp TEXT NOT NULL,"
-          "UNIQUE(datum, spieltyp)"
-          ")"
-        );
-        await db.execute(
-          "CREATE INDEX idx_spieltyp_datum ON ziehungen(spieltyp, datum DESC)"
-        );
+        await db.execute('''
+          CREATE TABLE ziehungen (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            datum TEXT NOT NULL,
+            spieltyp TEXT NOT NULL,
+            zahlen TEXT NOT NULL,
+            superzahl INTEGER NOT NULL
+          );
+        ''');
       },
     );
-    return database;
+
+    return _db!;
   }
 
-  static Future<List<LottoZiehung>> holeLetzteZiehungen({
-    required String spieltyp,
-    int limit = 10,
-  }) async {
-    final db = await _db();
+  // --- Helfer: Zahlen speichern / laden ---
+  static String _serializeZahlen(List<int> zahlen) {
+    return zahlen.join(',');
+  }
+
+  static List<int> _parseZahlen(String daten) {
+    return daten.split(',').map(int.parse).toList();
+  }
+
+  // --- Prüfen, ob eine Ziehung schon existiert ---
+  static Future<bool> pruefeObSchonVorhanden(
+      String spieltyp, DateTime datum) async {
+    final db = await _getDb();
     final result = await db.query(
-      _table,
-      where: "spieltyp = ?",
-      whereArgs: [spieltyp],
-      orderBy: "datum DESC",
-      limit: limit,
+      'ziehungen',
+      where: 'spieltyp = ? AND datum = ?',
+      whereArgs: [spieltyp, datum.toIso8601String()],
     );
-
-    return result.map((m) {
-      return LottoZiehung(
-        datum: DateTime.parse(m['datum'] as String),
-        zahlen: (m['zahlen'] as String).split(',').map(int.parse).toList(),
-        superzahl: m['superzahl'] as int,
-        spieltyp: m['spieltyp'] as String,
-      );
-    }).toList();
+    return result.isNotEmpty;
   }
 
+  // --- Nur neue Ziehungen speichern ---
   static Future<void> fuegeZiehungWennNeu(LottoZiehung z) async {
-    final db = await _db();
-    final exist = await db.query(
-      _table,
-      where: "datum = ? AND spieltyp = ?",
-      whereArgs: [z.datum.toIso8601String(), z.spieltyp],
-      limit: 1,
-    );
-    if (exist.isNotEmpty) return;
+    final vorhanden =
+        await pruefeObSchonVorhanden(z.spieltyp, z.datum);
 
-    await db.insert(_table, {
-      "datum": z.datum.toIso8601String(),
-      "zahlen": z.zahlen.join(","),
-      "superzahl": z.superzahl,
-      "spieltyp": z.spieltyp,
+    if (vorhanden) return;
+
+    final db = await _getDb();
+
+    await db.insert('ziehungen', {
+      'datum': z.datum.toIso8601String(),
+      'spieltyp': z.spieltyp,
+      'zahlen': _serializeZahlen(z.zahlen),
+      'superzahl': z.superzahl,
     });
   }
 
-  static Future<void> fuegeZiehungenHinzu(List<LottoZiehung> liste) async {
-    final db = await _db();
-    final batch = db.batch();
-    
-    for (final z in liste) {
-      // Prüfen ob bereits vorhanden
-      final exist = await db.query(
-        _table,
-        where: "datum = ? AND spieltyp = ?",
-        whereArgs: [z.datum.toIso8601String(), z.spieltyp],
-        limit: 1,
-      );
-      
-      if (exist.isEmpty) {
-        batch.insert(_table, {
-          "datum": z.datum.toIso8601String(),
-          "zahlen": z.zahlen.join(","),
-          "superzahl": z.superzahl,
-          "spieltyp": z.spieltyp,
-        });
-      }
-    }
-    
-    await batch.commit(noResult: true);
-  }
+  // --- Ziehungen abrufen (für HomeScreen & Statistik) ---
+  static Future<List<LottoZiehung>> holeLetzteZiehungen({
+    required String spieltyp,
+    required int limit,
+  }) async {
+    final db = await _getDb();
 
-  static Future<void> close() async {
-    final db = await _db();
-    await db.close();
+    final data = await db.query(
+      'ziehungen',
+      where: 'spieltyp = ?',
+      whereArgs: [spieltyp],
+      orderBy: 'datum DESC',
+      limit: limit,
+    );
+
+    return data.map((row) {
+      return LottoZiehung(
+        datum: DateTime.parse(row['datum'] as String),
+        spieltyp: row['spieltyp'] as String,
+        zahlen: _parseZahlen(row['zahlen'] as String),
+        superzahl: row['superzahl'] as int,
+      );
+    }).toList();
   }
 }

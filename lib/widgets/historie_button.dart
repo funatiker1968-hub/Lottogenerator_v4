@@ -7,11 +7,9 @@ class HistorieButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.history),
-      tooltip: 'Historie ansehen',
+      tooltip: 'Historie',
       onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Historie-Funktion kommt später.')),
-        );
+        Navigator.of(context).pushNamed('/historie');
       },
     );
   }
