@@ -8,7 +8,6 @@ class ErweiterteLottoDatenbank {
   // --- Datenbank laden oder erstellen ---
   static Future<Database> _getDb() async {
     if (_db != null) return _db!;
-
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'lottodaten.db');
 
@@ -82,6 +81,29 @@ class ErweiterteLottoDatenbank {
       whereArgs: [spieltyp],
       orderBy: 'datum DESC',
       limit: limit,
+    );
+
+    return data.map((row) {
+      return LottoZiehung(
+        datum: DateTime.parse(row['datum'] as String),
+        spieltyp: row['spieltyp'] as String,
+        zahlen: _parseZahlen(row['zahlen'] as String),
+        superzahl: row['superzahl'] as int,
+      );
+    }).toList();
+  }
+
+  // --- Alle Ziehungen für Analysen (Was-wäre-wenn, Simulation, etc.) ---
+  static Future<List<LottoZiehung>> holeAlleZiehungen({
+    required String spieltyp,
+  }) async {
+    final db = await _getDb();
+
+    final data = await db.query(
+      'ziehungen',
+      where: 'spieltyp = ?',
+      whereArgs: [spieltyp],
+      orderBy: 'datum ASC',
     );
 
     return data.map((row) {
