@@ -1,18 +1,20 @@
 workflows:
   release-apk:
     name: Release APK Build
-    working_directory: .
     environment:
       flutter: 3.38.1
 
+    cache:
+      cache_paths: []   # 🔥 Cache deaktiviert – Android wird vollständig neu gebaut!
+
     scripts:
       - name: Install dependencies
-        script: flutter pub get
-
-      - name: Build Release APK
         script: |
           flutter clean
           flutter pub get
+
+      - name: Build Release APK
+        script: |
           flutter build apk --release
 
     artifacts:
