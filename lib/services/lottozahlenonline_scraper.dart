@@ -1,5 +1,4 @@
 import 'package:http/http.dart' as http;
-import 'package:html/parser.dart' show parse;
 import '../models/lotto_data.dart';
 
 class LottozahlenOnlineScraper {
@@ -7,77 +6,103 @@ class LottozahlenOnlineScraper {
 
   LottozahlenOnlineScraper(this.spieltyp);
 
-  /// Lädt alle Ziehungen eines Jahres über lotto.de
   Future<List<LottoZiehung>> ladeJahr(int jahr) async {
     final List<LottoZiehung> result = [];
-
     final url = _buildUrl(jahr);
-    final resp = await http.get(Uri.parse(url));
 
+    final resp = await http.get(Uri.parse(url));
     if (resp.statusCode != 200) {
-      print("Fehler beim Laden: ${resp.statusCode}");
+      print("Fehler HTTP ${resp.statusCode} bei $url");
       return result;
     }
 
-    final document = parse(resp.body);
-    final rows = document.querySelectorAll("table tbody tr");
+    final html = resp.body;
 
-    for (final r in rows) {
-      final cols = r.querySelectorAll("td");
-      if (cols.length < 3) continue;
-
-      final datumText = cols[0].text.trim();
-      final zahlenText = cols[1].text.trim();
-
-      final date = _parseDatum(datumText);
-      final zahlen = _parseZahlen(zahlenText);
-
-      if (date != null && zahlen.isNotEmpty) {
-        result.add(LottoZiehung(
-          datum: date,
-          spieltyp: spieltyp,
-          zahlen: zahlen,
-          superzahl: zahlen.length > 6 ? zahlen.last : 0,
-        ));
-      }
+    if (spieltyp == "6aus49") {
+      _parseLotto(html, jahr, result);
+    } else if (spieltyp == "Eurojackpot") {
+      _parseEuro(html, jahr, result);
     }
 
     return result;
   }
 
-  /// URL je nach Spieltyp
   String _buildUrl(int jahr) {
     if (spieltyp == "6aus49") {
-      return "https://www.lotto.de/lotto-6aus49/archiv-${jahr}";
-    } else if (spieltyp == "Eurojackpot") {
-      return "https://www.lotto.de/eurojackpot/archiv-${jahr}";
+      return "https://www.lottozahlenonline.de/statistik/beide-spieltage/lottozahlen-archiv.php?j=$jahr";
+    }
+    if (spieltyp == "Eurojackpot") {
+      return "https://www.eurojackpot-zahlen.eu/eurojackpot-zahlenarchiv.php?j=$jahr";
     }
     throw Exception("Unbekannter Spieltyp: $spieltyp");
   }
 
-  /// Datum im Format 01.02.2023 → DateTime
-  DateTime? _parseDatum(String input) {
-    try {
-      final parts = input.split('.');
-      if (parts.length != 3) return null;
+  // ----------------------------------------------------------
+  //  LOTTO 6aus49  PARSER  (Regex)
+  // ----------------------------------------------------------
+  void _parseLotto(String html, int jahr, List<LottoZiehung> out) {
+    final exp = RegExp(
+      r'(\d{2}\.\d{2}\.' + jahr.toString() +
+          r').*?(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s*\(SZ\s*(\d)\)',
+      dotAll: true,
+    );
 
-      final tag = int.parse(parts[0]);
-      final mon = int.parse(parts[1]);
-      final jahr = int.parse(parts[2]);
+    for (final m in exp.allMatches(html)) {
+      final datum = _parseDatum(m.group(1)!);
+      final zahlen = [
+        int.parse(m.group(2)!),
+        int.parse(m.group(3)!),
+        int.parse(m.group(4)!),
+        int.parse(m.group(5)!),
+        int.parse(m.group(6)!),
+        int.parse(m.group(7)!),
+      ];
 
-      return DateTime(jahr, mon, tag);
-    } catch (_) {
-      return null;
+      final sz = int.parse(m.group(8)!);
+
+      out.add(LottoZiehung(
+        datum: datum,
+        spieltyp: "6aus49",
+        zahlen: zahlen,
+        superzahl: sz,
+      ));
     }
   }
 
-  /// Zahlenliste „1 2 3 4 5 6 (SZ 7)“
-  List<int> _parseZahlen(String input) {
-    final cleaned = input.replaceAll(RegExp(r'[^0-9 ]'), '');
-    return cleaned
-        .split(' ')
-        .where((e) => e.trim().isNotEmpty)
-        .map(int.parse)
-        .toList();
+  // ----------------------------------------------------------
+  //  EUROJACKPOT  PARSER  (Regex)
+  // ----------------------------------------------------------
+  void _parseEuro(String html, int jahr, List<LottoZiehung> out) {
+    final exp = RegExp(
+      r'(\d{2}\.\d{2}\.' + jahr.toString() +
+          r').*?(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2}).*?Eurozahlen:\s*(\d{1,2})\s+(\d{1,2})',
+      dotAll: true,
+    );
+
+    for (final m in exp.allMatches(html)) {
+      final datum = _parseDatum(m.group(1)!);
+
+      final zahlen = [
+        int.parse(m.group(2)!),
+        int.parse(m.group(3)!),
+        int.parse(m.group(4)!),
+        int.parse(m.group(5)!),
+        int.parse(m.group(6)!),
+        int.parse(m.group(7)!), // Eurozahl 1
+        int.parse(m.group(8)!), // Eurozahl 2
+      ];
+
+      out.add(LottoZiehung(
+        datum: datum,
+        spieltyp: "Eurojackpot",
+        zahlen: zahlen,
+        superzahl: 0,
+      ));
+    }
+  }
+
+  DateTime _parseDatum(String input) {
+    final p = input.split(".");
+    return DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
   }
 }
