@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-import 'lotto_6aus49_screen.dart';
-import 'eurojackpot_screen.dart';
 import 'home_tiles_block.dart';
 import 'import_screen.dart';
 
@@ -155,7 +153,9 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_datenLaden)
             const Padding(
               padding: EdgeInsets.all(8.0),
-              child: SizedBox(width: 16, height: 16,
+              child: SizedBox(
+                width: 16,
+                height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),

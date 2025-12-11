@@ -19,12 +19,11 @@ class HomeTilesBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Verwende die existierende HomeTile Klasse mit korrekten Parametern
     final lottoTile = HomeTile(
       title: 'Lotto 6aus49',
       icon: Icons.numbers,
       color: Colors.blue,
-      route: '/lotto6',
+      route: '/lotto',          // ✅ passt zu main.dart
     );
 
     final euroTile = HomeTile(
@@ -34,7 +33,6 @@ class HomeTilesBlock extends StatelessWidget {
       route: '/eurojackpot',
     );
 
-    // Erweiterte Tiles für zusätzliche Info
     final statistikTile = HomeTile(
       title: 'Statistik',
       icon: Icons.bar_chart,
@@ -49,11 +47,9 @@ class HomeTilesBlock extends StatelessWidget {
       route: '/historie',
     );
 
-    // Layout basierend auf Ausrichtung
     if (isPortrait) {
       return Column(
         children: [
-          // Erste Zeile: Lotto und EuroJackpot
           Row(
             children: [
               Expanded(child: lottoTile),
@@ -62,10 +58,8 @@ class HomeTilesBlock extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          // Info Container für Countdowns
           _buildInfoContainer(context),
           const SizedBox(height: 16),
-          // Zweite Zeile: Statistik und Historie
           Row(
             children: [
               Expanded(child: statistikTile),
@@ -76,11 +70,9 @@ class HomeTilesBlock extends StatelessWidget {
         ],
       );
     } else {
-      // Landscape Layout
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Linke Spalte: Tiles
           Expanded(
             flex: 2,
             child: Column(
@@ -104,7 +96,6 @@ class HomeTilesBlock extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          // Rechte Spalte: Info
           Expanded(
             flex: 1,
             child: _buildInfoContainer(context),
@@ -186,15 +177,17 @@ class HomeTilesBlock extends StatelessWidget {
         title,
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
       ),
-      ...lines.map((line) => Padding(
-            padding: const EdgeInsets.only(left: 8.0, top: 2),
-            child: Text(
-              line,
-              style: const TextStyle(fontSize: 12),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          )),
+      ...lines.map(
+        (line) => Padding(
+          padding: const EdgeInsets.only(left: 8.0, top: 2),
+          child: Text(
+            line,
+            style: const TextStyle(fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
     ];
   }
 }
