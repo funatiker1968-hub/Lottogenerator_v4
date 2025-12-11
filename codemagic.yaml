@@ -1,20 +1,23 @@
 workflows:
   release-apk:
-    name: Build Release APK
+    name: Release APK Build
     environment:
       flutter: 3.38.1
+
     scripts:
-      - name: Install packages
+      - name: Install dependencies
         script: |
           flutter pub get
-      
-      - name: Build release APK
+
+      - name: Build Release APK
         script: |
+          flutter clean
+          flutter pub get
           flutter build apk --release
-      
+
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
-      
+
     publishing:
       email:
         recipients:
