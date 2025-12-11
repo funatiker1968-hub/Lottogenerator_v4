@@ -1,13 +1,13 @@
 workflows:
   release-apk:
     name: Release APK Build
+    working_directory: .
     environment:
       flutter: 3.38.1
 
     scripts:
       - name: Install dependencies
-        script: |
-          flutter pub get
+        script: flutter pub get
 
       - name: Build Release APK
         script: |
