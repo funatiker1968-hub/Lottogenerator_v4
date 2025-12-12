@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'home_tiles_block.dart';
-import 'lotto_import_page.dart';
+import 'import_screen.dart';
 
 import '../models/lotto_data.dart';
 import '../services/lotto_database_erweitert.dart' as erweiterteDB;
@@ -177,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const Icon(Icons.download),
         onPressed: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const LottoImportPage()),
+            MaterialPageRoute(builder: (_) => const ImportScreen()),
           );
         },
       ),

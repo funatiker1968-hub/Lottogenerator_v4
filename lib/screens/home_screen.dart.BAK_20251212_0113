@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'home_tiles_block.dart';
-import 'lotto_import_page.dart';
+import '../lotto_import_page.dart';   // ✅ KORREKTE Import-Seite
 
 import '../models/lotto_data.dart';
 import '../services/lotto_database_erweitert.dart' as erweiterteDB;
@@ -173,6 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
           euroLines: _euroLines,
         ),
       ),
+
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.download),
         onPressed: () {

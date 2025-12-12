@@ -1,0 +1,143 @@
+import 'package:flutter/material.dart';
+
+class HomeTilesBlock extends StatelessWidget {
+  final bool isPortrait;
+  final String lottoCountdown;
+  final String euroCountdown;
+  final List<String> lottoLines;
+  final List<String> euroLines;
+
+  const HomeTilesBlock({
+    super.key,
+    required this.isPortrait,
+    required this.lottoCountdown,
+    required this.euroCountdown,
+    required this.lottoLines,
+    required this.euroLines,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return isPortrait
+        ? Column(
+            children: [
+              _buildTile(
+                title: "Lotto 6aus49",
+                color: const Color(0xFFFBC02D),
+                lines: lottoLines,
+                countdown: lottoCountdown,
+                subtitle: "12 Tippfelder im Scheinstil mit Superzahl",
+                drawDays: "Mittwoch & Samstag",
+              ),
+              const SizedBox(height: 16),
+              _buildTile(
+                title: "Eurojackpot",
+                color: const Color(0xFF1976D2),
+                lines: euroLines,
+                countdown: euroCountdown,
+                subtitle: "8 Tippfelder + 2 Eurozahlen",
+                drawDays: "Dienstag & Freitag",
+              ),
+            ],
+          )
+        : Row(
+            children: [
+              Expanded(
+                child: _buildTile(
+                  title: "Lotto 6aus49",
+                  color: const Color(0xFFFBC02D),
+                  lines: lottoLines,
+                  countdown: lottoCountdown,
+                  subtitle: "12 Tippfelder im Scheinstil mit Superzahl",
+                  drawDays: "Mittwoch & Samstag",
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildTile(
+                  title: "Eurojackpot",
+                  color: const Color(0xFF1976D2),
+                  lines: euroLines,
+                  countdown: euroCountdown,
+                  subtitle: "8 Tippfelder + 2 Eurozahlen",
+                  drawDays: "Dienstag & Freitag",
+                ),
+              ),
+            ],
+          );
+  }
+
+  Widget _buildTile({
+    required String title,
+    required String subtitle,
+    required List<String> lines,
+    required String countdown,
+    required Color color,
+    required String drawDays,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            "Beispiel-Ziehungen:",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 4),
+          for (final line in lines)
+            Text(
+              line,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Colors.black,
+              ),
+            ),
+          const SizedBox(height: 28),
+          Text(
+            "Ziehungen: $drawDays",
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            countdown,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
