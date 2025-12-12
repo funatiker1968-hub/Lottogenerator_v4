@@ -1,13 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-
-import 'home_tiles_block.dart';
-import 'lotto_import_page.dart';
-
-import '../models/lotto_data.dart';
-import '../services/lotto_database_erweitert.dart' as erweiterteDB;
 import '../widgets/historie_button.dart';
 import '../widgets/statistik_button.dart';
+import 'import_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,46 +13,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late Timer _timer;
-
   Duration _timeUntilLotto = Duration.zero;
   Duration _timeUntilEuro = Duration.zero;
-
-  List<LottoZiehung> _lottoZiehungen = [];
-  List<LottoZiehung> _euroZiehungen = [];
-  bool _datenLaden = false;
 
   @override
   void initState() {
     super.initState();
     _updateCountdowns();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateCountdowns());
-    _ladeEchteDaten();
-  }
-
-  Future<void> _ladeEchteDaten() async {
-    setState(() => _datenLaden = true);
-
-    try {
-      final lottoDaten =
-          await erweiterteDB.ErweiterteLottoDatenbank.holeLetzteZiehungen(
-        spieltyp: '6aus49',
-        limit: 2,
-      );
-
-      final euroDaten =
-          await erweiterteDB.ErweiterteLottoDatenbank.holeLetzteZiehungen(
-        spieltyp: 'Eurojackpot',
-        limit: 2,
-      );
-
-      setState(() {
-        _lottoZiehungen = lottoDaten;
-        _euroZiehungen = euroDaten;
-        _datenLaden = false;
-      });
-    } catch (_) {
-      setState(() => _datenLaden = false);
-    }
   }
 
   @override
@@ -100,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return d;
   }
 
-  String _format(Duration d) {
+  String _fmt(Duration d) {
     int sec = d.inSeconds;
     if (sec < 0) sec = 0;
 
@@ -115,71 +78,41 @@ class _HomeScreenState extends State<HomeScreen> {
         '${secs.toString().padLeft(2, '0')}';
   }
 
-  List<String> get _lottoLines =>
-      _lottoZiehungen.isEmpty ? ['–'] : _lottoZiehungen.map(_fmtZiehung).toList();
-
-  List<String> get _euroLines =>
-      _euroZiehungen.isEmpty ? ['–'] : _euroZiehungen.map(_fmtEuroZiehung).toList();
-
-  String _fmtZiehung(LottoZiehung z) {
-    final w = ['Mo','Di','Mi','Do','Fr','Sa','So'][z.datum.weekday - 1];
-    final d = z.formatierterDatum;
-    final nums = z.zahlen.take(6).map((e)=>e.toString().padLeft(2,'0')).join(' ');
-    return '$w $d: $nums | SZ: ${z.superzahl}';
-  }
-
-  String _fmtEuroZiehung(LottoZiehung z) {
-    final w = ['Mo','Di','Mi','Do','Fr','Sa','So'][z.datum.weekday - 1];
-    final d = z.formatierterDatum;
-
-    if (z.zahlen.length >= 7) {
-      final h = z.zahlen.take(5).map((e)=>e.toString().padLeft(2,'0')).join(' ');
-      final e = z.zahlen.skip(5).take(2).map((e)=>e.toString().padLeft(2,'0')).join(', ');
-      return '$w $d: $h | Euro: $e';
-    }
-
-    return '$w $d: ${z.zahlen.map((e)=>e.toString().padLeft(2,'0')).join(' ')}';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final orientation = MediaQuery.of(context).orientation;
-    final isPortrait = orientation == Orientation.portrait;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lottogenerator'),
-        actions: [
-          if (_datenLaden)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          const StatistikButton(),
-          const HistorieButton(),
+        title: const Text("Lottogenerator"),
+        actions: const [
+          StatistikButton(),
+          HistorieButton(),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: HomeTilesBlock(
-          isPortrait: isPortrait,
-          lottoCountdown: _format(_timeUntilLotto),
-          euroCountdown: _format(_timeUntilEuro),
-          lottoLines: _lottoLines,
-          euroLines: _euroLines,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text("Nächste Lottoziehung in:", style: Theme.of(context).textTheme.titleMedium),
+            Text(_fmt(_timeUntilLotto), style: const TextStyle(fontSize: 28)),
+
+            const SizedBox(height: 24),
+
+            Text("Nächste Eurojackpot-Ziehung in:", style: Theme.of(context).textTheme.titleMedium),
+            Text(_fmt(_timeUntilEuro), style: const TextStyle(fontSize: 28)),
+
+            const SizedBox(height: 40),
+
+            ElevatedButton.icon(
+              icon: const Icon(Icons.download),
+              label: const Text("Daten-Import"),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ImportScreen()),
+                );
+              },
+            ),
+          ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.download),
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const LottoImportPage()),
-          );
-        },
       ),
     );
   }

@@ -2,25 +2,20 @@ import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' show parse;
 import '../models/lotto_data.dart';
 
-class LottozahlenOnlineScraper {
-  final String spieltyp;
-
-  LottozahlenOnlineScraper(this.spieltyp);
-
+class EurojackpotScraper {
   Future<List<LottoZiehung>> ladeJahr(int jahr) async {
     final List<LottoZiehung> result = [];
 
-    final url = "https://www.lottozahlenonline.de/statistik/beide-spieltage/lottozahlen-archiv.php?j=$jahr";
+    final url = "https://www.eurojackpot-zahlen.eu/eurojackpot-zahlenarchiv.php?j=$jahr";
 
     final resp = await http.get(Uri.parse(url));
     if (resp.statusCode != 200) {
-      print("Fehler beim Laden der Lotto-Seite: ${resp.statusCode}");
+      print("Fehler beim Laden der Eurojackpot-Seite: ${resp.statusCode}");
       return result;
     }
 
     final doc = parse(resp.body);
 
-    // Tabelle mit Ziehungen
     final rows = doc.querySelectorAll("table tbody tr");
     for (final row in rows) {
       final cols = row.querySelectorAll("td");
@@ -32,16 +27,17 @@ class LottozahlenOnlineScraper {
       final date = _parseDatum(datumText);
       final zahlen = _parseZahlen(zahlenText);
 
-      if (date == null || zahlen.length < 6) continue;
+      if (date == null || zahlen.length < 7) continue;
 
-      final superzahl = zahlen.length > 6 ? zahlen[6] : 0;
+      final haupt = zahlen.take(5).toList();
+      final euro = zahlen.skip(5).take(2).toList();
 
       result.add(
         LottoZiehung(
           datum: date,
-          spieltyp: "6aus49",
-          zahlen: zahlen.take(6).toList(),
-          superzahl: superzahl,
+          spieltyp: "Eurojackpot",
+          zahlen: [...haupt, ...euro],
+          superzahl: 0,
         ),
       );
     }
