@@ -5,6 +5,7 @@ import '../models/lotto_data.dart';
 class ErweiterteLottoDatenbank {
   static Database? _db;
 
+  // --- Datenbank laden oder erstellen ---
   static Future<Database> _getDb() async {
     if (_db != null) return _db!;
 
@@ -16,7 +17,7 @@ class ErweiterteLottoDatenbank {
       version: 1,
       onCreate: (db, version) async {
         await db.execute('''
-          CREATE TABLE ziehungen (
+          CREATE TABLE IF NOT EXISTS ziehungen (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             datum TEXT NOT NULL,
             spieltyp TEXT NOT NULL,
@@ -30,12 +31,13 @@ class ErweiterteLottoDatenbank {
     return _db!;
   }
 
-  static String _serializeZahlen(List<int> zahlen) =>
-      zahlen.join(',');
+  // --- Helfer ---
+  static String _serializeZahlen(List<int> zahlen) => zahlen.join(',');
 
   static List<int> _parseZahlen(String daten) =>
       daten.split(',').map(int.parse).toList();
 
+  // --- Existenzprüfung ---
   static Future<bool> pruefeObSchonVorhanden(
       String spieltyp, DateTime datum) async {
     final db = await _getDb();
@@ -47,6 +49,7 @@ class ErweiterteLottoDatenbank {
     return result.isNotEmpty;
   }
 
+  // --- Insert ---
   static Future<void> fuegeZiehungWennNeu(LottoZiehung z) async {
     final vorhanden =
         await pruefeObSchonVorhanden(z.spieltyp, z.datum);
@@ -61,6 +64,7 @@ class ErweiterteLottoDatenbank {
     });
   }
 
+  // --- Für Statistik / Anzeige ---
   static Future<List<LottoZiehung>> holeLetzteZiehungen({
     required String spieltyp,
     required int limit,
@@ -72,6 +76,27 @@ class ErweiterteLottoDatenbank {
       whereArgs: [spieltyp],
       orderBy: 'datum DESC',
       limit: limit,
+    );
+
+    return data.map((row) {
+      return LottoZiehung(
+        datum: DateTime.parse(row['datum'] as String),
+        spieltyp: row['spieltyp'] as String,
+        zahlen: _parseZahlen(row['zahlen'] as String),
+        superzahl: row['superzahl'] as int,
+      );
+    }).toList();
+  }
+
+  // --- Für Import-Check (WICHTIG für Eurojackpot) ---
+  static Future<List<LottoZiehung>> holeAlleZiehungen({
+    required String spieltyp,
+  }) async {
+    final db = await _getDb();
+    final data = await db.query(
+      'ziehungen',
+      where: 'spieltyp = ?',
+      whereArgs: [spieltyp],
     );
 
     return data.map((row) {

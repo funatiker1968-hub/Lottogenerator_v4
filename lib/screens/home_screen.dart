@@ -1,115 +1,85 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import '../widgets/historie_button.dart';
-import '../widgets/statistik_button.dart';
 import 'import_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  late Timer _timer;
-  Duration _timeUntilLotto = Duration.zero;
-  Duration _timeUntilEuro = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _updateCountdowns();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateCountdowns());
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
-  void _updateCountdowns() {
-    final now = DateTime.now();
-    _timeUntilLotto = _nextLottoDraw(now).difference(now);
-    _timeUntilEuro = _nextEuroDraw(now).difference(now);
-
-    if (_timeUntilLotto.isNegative) _timeUntilLotto = Duration.zero;
-    if (_timeUntilEuro.isNegative) _timeUntilEuro = Duration.zero;
-
-    setState(() {});
-  }
-
-  DateTime _nextLottoDraw(DateTime now) {
-    const days = [DateTime.wednesday, DateTime.saturday];
-    return _nextDraw(now, days, 19, 25);
-  }
-
-  DateTime _nextEuroDraw(DateTime now) {
-    const days = [DateTime.tuesday, DateTime.friday];
-    return _nextDraw(now, days, 20, 0);
-  }
-
-  DateTime _nextDraw(DateTime now, List<int> days, int hour, int minute) {
-    DateTime d = DateTime(now.year, now.month, now.day, hour, minute);
-    if (days.contains(now.weekday) && d.isAfter(now)) return d;
-
-    for (int i = 1; i <= 7; i++) {
-      d = d.add(const Duration(days: 1));
-      if (days.contains(d.weekday)) {
-        return DateTime(d.year, d.month, d.day, hour, minute);
-      }
-    }
-    return d;
-  }
-
-  String _fmt(Duration d) {
-    int sec = d.inSeconds;
-    if (sec < 0) sec = 0;
-
-    final days = sec ~/ 86400;
-    final hours = (sec % 86400) ~/ 3600;
-    final mins = (sec % 3600) ~/ 60;
-    final secs = sec % 60;
-
-    final dStr = days > 0 ? '${days}T ' : '';
-    return '$dStr${hours.toString().padLeft(2, '0')}:'
-        '${mins.toString().padLeft(2, '0')}:'
-        '${secs.toString().padLeft(2, '0')}';
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Lottogenerator"),
-        actions: const [
-          StatistikButton(),
-          HistorieButton(),
-        ],
+        title: const Text('Lotto Generator'),
+        centerTitle: true,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
           children: [
-            Text("Nächste Lottoziehung in:", style: Theme.of(context).textTheme.titleMedium),
-            Text(_fmt(_timeUntilLotto), style: const TextStyle(fontSize: 28)),
-
-            const SizedBox(height: 24),
-
-            Text("Nächste Eurojackpot-Ziehung in:", style: Theme.of(context).textTheme.titleMedium),
-            Text(_fmt(_timeUntilEuro), style: const TextStyle(fontSize: 28)),
-
-            const SizedBox(height: 40),
-
-            ElevatedButton.icon(
-              icon: const Icon(Icons.download),
-              label: const Text("Daten-Import"),
-              onPressed: () {
-                Navigator.of(context).push(
+            _tile(
+              context,
+              title: 'Lotto 6aus49',
+              icon: Icons.confirmation_number,
+              onTap: () {},
+            ),
+            _tile(
+              context,
+              title: 'Eurojackpot',
+              icon: Icons.euro,
+              onTap: () {},
+            ),
+            _tile(
+              context,
+              title: 'Statistik',
+              icon: Icons.bar_chart,
+              onTap: () {},
+            ),
+            _tile(
+              context,
+              title: 'Datenimport',
+              icon: Icons.download,
+              onTap: () {
+                Navigator.push(
+                  context,
                   MaterialPageRoute(builder: (_) => const ImportScreen()),
                 );
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tile(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade400),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'screens/import_screen.dart';
-import 'services/eurojackpot_import_service.dart';
-import 'services/lotto_import_service.dart';
 
-void main() async {
+import 'screens/home_screen.dart';
+import 'services/lotto_import_service.dart';
+import 'services/eurojackpot_import_service.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // automatische Imports (nur wenn leer)
+  // Auto-Importe (nur wenn DB leer)
   await LottoImportService().import6aus49FromAsset(
     status: (_) {},
   );
+
   await EurojackpotImportService.instance.importIfEmpty(
     status: (_) {},
   );
@@ -24,7 +26,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: ImportScreen(),
+      home: HomeScreen(),
     );
   }
 }
