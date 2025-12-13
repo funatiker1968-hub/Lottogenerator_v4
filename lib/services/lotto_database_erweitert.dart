@@ -1,13 +1,33 @@
+import 'dart:io';
+
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
+
 import '../models/lotto_data.dart';
 
 class ErweiterteLottoDatenbank {
   static Database? _db;
+  static bool _initialized = false;
+
+  // --- EINMALIGE Initialisierung (wichtig für VM / Tests / CLI) ---
+  static void _initIfNeeded() {
+    if (_initialized) return;
+
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+
+    _initialized = true;
+  }
 
   // --- Datenbank laden oder erstellen ---
   static Future<Database> _getDb() async {
+    _initIfNeeded();
+
     if (_db != null) return _db!;
+
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'lottodaten.db');
 
@@ -55,11 +75,9 @@ class ErweiterteLottoDatenbank {
   static Future<void> fuegeZiehungWennNeu(LottoZiehung z) async {
     final vorhanden =
         await pruefeObSchonVorhanden(z.spieltyp, z.datum);
-
     if (vorhanden) return;
 
     final db = await _getDb();
-
     await db.insert('ziehungen', {
       'datum': z.datum.toIso8601String(),
       'spieltyp': z.spieltyp,
@@ -93,7 +111,7 @@ class ErweiterteLottoDatenbank {
     }).toList();
   }
 
-  // --- Alle Ziehungen für Analysen (Was-wäre-wenn, Simulation, etc.) ---
+  // --- Alle Ziehungen ---
   static Future<List<LottoZiehung>> holeAlleZiehungen({
     required String spieltyp,
   }) async {

@@ -8,11 +8,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
   http: ^1.6.0
   html: ^0.15.0
   sqflite: ^2.2.0
+  sqflite_common_ffi: ^2.3.3
   path: ^1.8.0
-  audioplayers: ^6.0.0    # <<< WICHTIG
+  audioplayers: ^6.0.0
   cupertino_icons: ^1.0.0
 
 dev_dependencies:
@@ -22,3 +24,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/data/lotto_6aus49.json
