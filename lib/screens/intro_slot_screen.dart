@@ -14,7 +14,7 @@ class _IntroSlotScreenState extends State<IntroSlotScreen> {
   final Random rnd = Random();
 
   late Timer _timer;
-  List<String> reel = List.filled(18, '?');
+  List<String> reel = List.filled(180, '?');
 
   bool _finished = false;
   int _ticks = 0;
@@ -44,9 +44,13 @@ class _IntroSlotScreenState extends State<IntroSlotScreen> {
           }
         } else {
           // Phase 3: Finaltext steht komplett
-          reel = finalText.substring(0, 18).split('');
+          reel = finalText.substring(0, 20).split('');
           _finished = true;
           _timer.cancel();
+          // Automatisch zum nächsten Screen wechseln
+          Timer(const Duration(seconds: 2), () {
+            if (mounted) Navigator.pushReplacementNamed(context, "/");
+          });
         }
       });
     });
@@ -55,6 +59,10 @@ class _IntroSlotScreenState extends State<IntroSlotScreen> {
   @override
   void dispose() {
     _timer.cancel();
+          // Automatisch zum nächsten Screen wechseln
+          Timer(const Duration(seconds: 2), () {
+            if (mounted) Navigator.pushReplacementNamed(context, "/");
+          });
     super.dispose();
   }
 
