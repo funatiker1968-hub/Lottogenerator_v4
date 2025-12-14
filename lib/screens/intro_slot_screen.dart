@@ -13,13 +13,14 @@ class _IntroSlotScreenState extends State<IntroSlotScreen> {
   final List<String> chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split('');
   final Random rnd = Random();
 
-  Timer? _timer;
+  late Timer _timer;
   List<String> reel = List.filled(18, '?');
+
   bool _finished = false;
   int _ticks = 0;
 
-  final String finalText = 
-      "ZAHLENGENERATOR FÜR 6AUS49 UND EUROJACKPOT BY FUNATIKER";
+  final String finalText =
+      "LOTTOZAHLENGENERATOR FÜR LOTTO 6AUS49 UND EUROJACKPOT BY FUNATIKER";
 
   @override
   void initState() {
@@ -30,8 +31,10 @@ class _IntroSlotScreenState extends State<IntroSlotScreen> {
         _ticks++;
 
         if (_ticks < 40) {
+          // Phase 1: völliger Buchstabensalat
           reel = List.generate(18, (_) => chars[rnd.nextInt(chars.length)]);
         } else if (_ticks < 100) {
+          // Phase 2: Reel langsam stabilisieren
           for (int i = 0; i < reel.length; i++) {
             if (rnd.nextDouble() < (_ticks - 40) / 60) {
               reel[i] = finalText[i];
@@ -39,18 +42,11 @@ class _IntroSlotScreenState extends State<IntroSlotScreen> {
               reel[i] = chars[rnd.nextInt(chars.length)];
             }
           }
-        } else if (!_finished) {
+        } else {
+          // Phase 3: Finaltext steht komplett
           reel = finalText.substring(0, 18).split('');
           _finished = true;
-          _timer?.cancel();
-
-          Future.delayed(const Duration(seconds: 2), () {
-            if (mounted) {
-              // FIX: Navigation über AppFlow statt Route
-              // AppFlow wird den HomeScreen automatisch anzeigen
-              // Wir setzen einfach einen Flag oder nutzen den Build-Kontext
-            }
-          });
+          _timer.cancel();
         }
       });
     });
@@ -58,39 +54,84 @@ class _IntroSlotScreenState extends State<IntroSlotScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _timer.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: reel
-              .map(
-                (c) => Container(
-                  width: 20,
-                  height: 40,
-                  alignment: Alignment.center,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade900,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    c,
-                    style: const TextStyle(
-                      color: Colors.yellow,
-                      fontSize: 24,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Walzenfeld
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                border: Border.all(color: Colors.white, width: 3),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: reel
+                    .map(
+                      (c) => Container(
+                        width: 20,
+                        height: 40,
+                        alignment: Alignment.center,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade900,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          c,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: Colors.yellow,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+            const SizedBox(height: 40),
+
+            if (_finished)
+              Column(
+                children: [
+                  Text(
+                    "Lottozahlengenerator",
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-              )
-              .toList(),
+                  const SizedBox(height: 8),
+                  Text(
+                    "für Lotto 6aus49 und Eurojackpot",
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.yellow,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "by Funatiker",
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ),
       ),
     );
