@@ -12,7 +12,7 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Lotto Generator'),
         centerTitle: true,
-        backgroundColor: const Color.fromRGBO(33, 150, 243, 1), // FIX: Kein withOpacity
+        backgroundColor: const Color(0xFF2196F3), // Korrekte Farbsyntax
       ),
       body: Padding(
         padding: const EdgeInsets.all(12),
@@ -26,7 +26,7 @@ class HomeScreen extends StatelessWidget {
               title: 'Lotto 6aus49',
               icon: Icons.confirmation_number,
               iconColor: Colors.white,
-              tileColor: const Color.fromRGBO(21, 101, 192, 1),
+              tileColor: const Color(0xFF1565C0),
               textColor: Colors.white,
               onTap: () {
                 Navigator.push(
@@ -41,7 +41,7 @@ class HomeScreen extends StatelessWidget {
               title: 'Eurojackpot',
               icon: Icons.euro,
               iconColor: Colors.white,
-              tileColor: const Color.fromRGBO(245, 124, 0, 1),
+              tileColor: const Color(0xFFF57C00),
               textColor: Colors.white,
               onTap: () {
                 Navigator.push(
@@ -56,7 +56,7 @@ class HomeScreen extends StatelessWidget {
               title: 'Statistik',
               icon: Icons.bar_chart,
               iconColor: Colors.black87,
-              tileColor: const Color.fromRGBO(200, 230, 201, 1),
+              tileColor: const Color(0xFFC8E6C9),
               textColor: Colors.black87,
               onTap: () {
                 _showComingSoon(context, 'Statistik');
@@ -68,7 +68,7 @@ class HomeScreen extends StatelessWidget {
               title: 'Datenimport',
               icon: Icons.download,
               iconColor: Colors.white,
-              tileColor: const Color.fromRGBO(123, 31, 162, 1),
+              tileColor: const Color(0xFF7B1FA2),
               textColor: Colors.white,
               onTap: () {
                 Navigator.push(
@@ -83,7 +83,7 @@ class HomeScreen extends StatelessWidget {
               title: 'Info',
               icon: Icons.info,
               iconColor: Colors.black87,
-              tileColor: const Color.fromRGBO(255, 241, 118, 1),
+              tileColor: const Color(0xFFFFF176),
               textColor: Colors.black87,
               onTap: () {
                 _showAppInfo(context);
@@ -95,7 +95,7 @@ class HomeScreen extends StatelessWidget {
               title: 'Einstellungen',
               icon: Icons.settings,
               iconColor: Colors.black87,
-              tileColor: const Color.fromRGBO(224, 224, 224, 1),
+              tileColor: const Color(0xFFE0E0E0),
               textColor: Colors.black87,
               onTap: () {
                 _showComingSoon(context, 'Einstellungen');

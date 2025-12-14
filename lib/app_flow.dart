@@ -28,35 +28,19 @@ class _AppFlowState extends State<AppFlow> {
       );
     }
 
-    // 2. Intro
+    // 2. Intro (mit Callback - WICHTIG: Intro startet die App)
     if (!_introDone) {
-      return const IntroSlotScreen(
-        key: const ValueKey('intro'),
+      return IntroSlotScreen(
+        onComplete: () {
+          // WICHTIG: Intro ist fertig, App kann starten
+          if (mounted) {
+            setState(() => _introDone = true);
+          }
+        },
       );
     }
 
-    // 3. Home
+    // 3. Home (APP WIRD HIER GESTARTET)
     return const HomeScreen();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    
-    // Prüfe regelmäßig ob Intro fertig ist
-    if (_accepted && !_introDone) {
-      // Starte Timer der prüft (alle 500ms)
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted && _accepted && !_introDone) {
-          // Hier könnten wir einen Callback vom IntroScreen haben
-          // Aber da wir keinen haben, machen wir es nach Zeit
-          Future.delayed(const Duration(seconds: 5), () {
-            if (mounted && !_introDone) {
-              setState(() => _introDone = true);
-            }
-          });
-        }
-      });
-    }
   }
 }
