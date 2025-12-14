@@ -1,5 +1,5 @@
 import '../models/lotto_data.dart';
-import 'lotto_database_erweitert.dart' as erweiterteDB;
+import '../services/lotto_database_erweitert.dart' as erweiterteDB;
 
 class WasWaereWennTreffer {
   final DateTime datum;

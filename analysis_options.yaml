@@ -1,4 +1,11 @@
+analyzer:
+  exclude:
+    - "lib/archive_old_screens/**"
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+
 linter:
   rules:
-    avoid_print: false
-
+    # Hier können wir Regeln deaktivieren, aber erstmal nur excluden
+    - avoid_print
+    - prefer_const_constructors

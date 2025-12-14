@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'services/lotto_import_service.dart';
+import '../services/lotto_import_service.dart';
 
 class LottoImportPage extends StatefulWidget {
   const LottoImportPage({super.key});

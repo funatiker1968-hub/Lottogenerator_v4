@@ -13,99 +13,81 @@ class DisclaimerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
+      backgroundColor: Colors.blue.shade50,
+      body: SafeArea(
+        child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.warning_amber,
-                size: 80,
-                color: Colors.orange,
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 40),
               const Text(
-                'Haftungsausschluss',
+                "Hinweis zur Nutzung",
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 26,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: Color.fromRGBO(0, 0, 0, 0.87),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Wichtiger Hinweis:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      '1. Diese App dient nur zu Unterhaltungszwecken.',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    Text(
-                      '2. Keine Gewähr für Richtigkeit der Zahlen.',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    Text(
-                      '3. Keine Garantie für Gewinne.',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    Text(
-                      '4. Spielen Sie verantwortungsbewusst.',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                  ],
-                ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 30),
+              const Expanded(
+                child: SingleChildScrollView(
+                  child: Text(
+                    """                                                                   
+Diese App dient ausschließlich der zufälligen Generierung von Zahlen für Lotto 6aus49 und Eurojackpot.                                                                               
+Sie basiert auf rein zufälligen mathematischen Verfahren und bietet keinerlei Gewinngarantie oder Verbesserung von Gewinnchancen.                                                                                                                                               
+Lotto ist ein Glücksspiel. Bitte spiele verantwortungsbewusst.                             
+Spielteilnahme erst ab 18 Jahren.                                                                                                                                                     
+Diese App steht in keinerlei Verbindung zu staatlichen oder privaten Lotteriegesellschaften.                                                                                          
+Alle Logos, Namen und Marken gehören den jeweiligen Inhabern.                                                                                                                         
+Mit „Ich akzeptiere“ bestätigst du, dass du diesen Hinweis verstanden hast.                                                                                                           
+Bei Ablehnung wird die App sofort geschlossen.                                                                 
+""",
+                    style: TextStyle(
+                      fontSize: 18,
+                      height: 1.35,
+                      color: Color.fromRGBO(0, 0, 0, 0.87),
+                    ),
+                    textAlign: TextAlign.left,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  ElevatedButton.icon(
-                    onPressed: onDecline,
-                    icon: const Icon(Icons.cancel),
-                    label: const Text('Ablehnen'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: onDecline,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text(
+                        "Ablehnen",
+                        style: TextStyle(fontSize: 16),
+                      ),
                     ),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: onAccept,
-                    icon: const Icon(Icons.check_circle),
-                    label: const Text('Akzeptieren'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: onAccept,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text(
+                        "Ich akzeptiere",
+                        style: TextStyle(fontSize: 16),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'Sie müssen den Haftungsausschluss akzeptieren, um die App zu nutzen.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
-                textAlign: TextAlign.center,
-              ),
+              const SizedBox(height: 30),
             ],
           ),
         ),
