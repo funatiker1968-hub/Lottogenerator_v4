@@ -1,0 +1,217 @@
+PROJEKT: Lottogenerator V4
+=========================
+
+1. ÜBERBLICK
+------------
+Projektname: lottogenerator_v4
+
+Ziel:
+Flutter-App zur Verwaltung, Analyse und Generierung von Lottozahlen
+für:
+- Lotto 6aus49
+- Eurojackpot
+
+Eigenschaften:
+- Offline-fähig
+- Lokale SQLite-Datenbank
+- Historische Ziehungen importierbar
+- Erweiterbar für Statistik und Simulation
+
+Primäre Zielplattform: Android
+Build-System: Codemagic
+Entwicklungsumgebung: Termux + Debian
+
+
+2. TECHNOLOGIESTACK
+-------------------
+- Flutter (Dart SDK >= 3.0)
+- sqflite (SQLite lokal)
+- path
+- http / html (für frühere Scraper)
+- Keine Cloud-Abhängigkeit
+- Keine externen APIs im Produktivbetrieb
+
+
+3. PROJEKTSTRUKTUR
+------------------
+lottogenerator_v4/
+│
+├─ lib/
+│  ├─ main.dart
+│  │   Einstiegspunkt der App
+│
+│  ├─ screens/
+│  │  ├─ home_screen.dart
+│  │  │   Hauptmenü mit Kachel-UI
+│  │  │
+│  │  ├─ import_screen.dart
+│  │  │   Datenimport für Lotto & Eurojackpot
+│  │  │
+│  │  ├─ intro_slot_screen.dart
+│  │  │   Slotmaschinen-Intro
+│  │  │
+│  │  ├─ lotto6/
+│  │  │   UI für Lotto 6aus49
+│  │  │
+│  │  └─ eurojackpot_screen.dart
+│  │      UI für Eurojackpot
+│  │
+│  ├─ services/
+│  │  ├─ lotto_database_erweitert.dart
+│  │  │   Zentrale Datenbank-Logik
+│  │  │
+│  │  ├─ lotto_import_service.dart
+│  │  │   Import Lotto 6aus49 (JSON/CSV)
+│  │  │
+│  │  ├─ eurojackpot_import_service.dart
+│  │  │   Import Eurojackpot (TXT 2012–2025)
+│  │  │
+│  │  └─ eurojackpot_scraper.dart
+│  │      Alt / nicht produktiv
+│  │
+│  ├─ core/services/
+│  │  └─ eurojackpot_db_service.dart
+│  │      EJ-spezifische DB-Zugriffe
+│  │
+│  └─ models/
+│     └─ lotto_data.dart
+│         Datenmodell LottoZiehung
+│
+├─ assets/
+│  └─ data/
+│     ├─ lotto_6aus49.json
+│     │   Historische Lottozahlen
+│     │
+│     ├─ eurojackpot_2012_2025.txt
+│     │   Historische Eurojackpot-Zahlen (Basis)
+│     │
+│     └─ eurojackpot.csv
+│         Optional / Zusatz
+│
+├─ android/
+│  └─ app/src/main/res/mipmap-*
+│      App-Icons (aktiv)
+│
+├─ pubspec.yaml
+└─ PROJEKT_DOKUMENTATION_LOTTOGENERATOR_V4.txt
+
+
+4. WICHTIGE PFADE
+-----------------
+Assets:
+- assets/data/lotto_6aus49.json
+- assets/data/eurojackpot_2012_2025.txt
+
+Datenbank:
+- SQLite (automatisch erzeugt)
+- Tabelle: ziehungen
+
+
+5. DATENBANKMODELL
+------------------
+Tabelle: ziehungen
+
+Felder:
+- id INTEGER PRIMARY KEY
+- datum TEXT (ISO-Format)
+- spieltyp TEXT ('6aus49' | 'eurojackpot')
+- zahlen TEXT (CSV-String der Zahlen)
+- superzahl INTEGER
+  - Lotto 6aus49: echte Superzahl
+  - Eurojackpot: immer 0
+
+
+6. IMPORTLOGIK
+--------------
+Lotto 6aus49:
+- Quelle: lotto_6aus49.json
+- 6 Zahlen + Superzahl
+- Gruppierung nach Datum
+- Dublettenprüfung vor Insert
+
+Eurojackpot:
+- Quelle: eurojackpot_2012_2025.txt
+- Format:
+  YYYY-MM-DD | n n n n n | e e
+- Speicherung:
+  zahlen = 7 Werte (5 + 2)
+  superzahl = 0
+
+
+7. APP-ABLAUF (SOLL)
+--------------------
+1. Disclaimer
+2. Intro (Slot-Animation)
+3. HomeScreen (Kachel-UI)
+   - Lotto 6aus49
+   - Eurojackpot
+   - Statistik
+   - Datenimport
+4. Navigation je nach Auswahl
+5. Import manuell oder automatisch
+6. Statistik & Analyse
+
+
+8. AKTUELLER STAND
+------------------
+Funktional:
+- App startet
+- HomeScreen mit Kachel-UI
+- Lotto 6aus49 Import funktioniert
+- Eurojackpot Import 2012–2025 funktioniert
+- Datenbank stabil
+- Codemagic Build lauffähig
+
+Nicht umgesetzt / offen:
+- Statistik-UI
+- Generator-Logik
+- Wahrscheinlichkeitsrechnung
+- Charts / Graphen
+- ImportRange (nur Stub)
+
+
+9. ENTWICKLUNGSREGELN (VERBINDLICH)
+-----------------------------------
+- Keine Dateien ungefragt ersetzen
+- Änderungen nur mit vollständigem Kontext
+- Ganze Dateien per Heredoc
+- Keine stillen UI-Änderungen
+- Kein lokales flutter run
+- Nur flutter analyze + CI
+- Kachel-Optik & Farben bleiben erhalten
+
+
+10. MÖGLICHE FEATURES
+---------------------
+Kurzfristig:
+- Import-Status (letzte Ziehung, letztes Datum)
+- Fortschrittsanzeige im Import
+- Getrennte Importbuttons
+
+Statistik:
+- Häufigkeit
+- Heiß / kalt
+- Zeitabstände
+- Trends
+
+Generator:
+- Zufall
+- Statistik-basiert
+- Benutzerfilter
+
+Langfristig:
+- Backup / Restore
+- Export (CSV/PDF)
+- Mehrsprachigkeit
+- Optional Cloud-Sync
+
+
+11. ZIELBILD
+------------
+Stabile, offline-fähige Lotto-App mit:
+- Vollständiger Historie
+- Reproduzierbaren Importen
+- Klarer Architektur
+- Erweiterbarkeit ohne Umbau
+
+

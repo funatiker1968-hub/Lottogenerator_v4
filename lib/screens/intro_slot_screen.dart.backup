@@ -15,10 +15,11 @@ class _IntroSlotScreenState extends State<IntroSlotScreen> {
 
   Timer? _timer;
   List<String> reel = List.filled(18, '?');
+
   bool _finished = false;
   int _ticks = 0;
 
-  final String finalText = 
+  final String finalText =
       "ZAHLENGENERATOR FÜR 6AUS49 UND EUROJACKPOT BY FUNATIKER";
 
   @override
@@ -46,9 +47,7 @@ class _IntroSlotScreenState extends State<IntroSlotScreen> {
 
           Future.delayed(const Duration(seconds: 2), () {
             if (mounted) {
-              // FIX: Navigation über AppFlow statt Route
-              // AppFlow wird den HomeScreen automatisch anzeigen
-              // Wir setzen einfach einen Flag oder nutzen den Build-Kontext
+              Navigator.pushReplacementNamed(context, '/home');
             }
           });
         }
