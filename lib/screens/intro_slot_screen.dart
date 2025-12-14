@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class IntroSlotScreen extends StatefulWidget {
+  final VoidCallback? onIntroComplete;
+  const IntroSlotScreen({super.key, this.onIntroComplete});
   const IntroSlotScreen({super.key});
 
   @override
@@ -47,6 +49,9 @@ class _IntroSlotScreenState extends State<IntroSlotScreen> {
           reel = finalText.substring(0, 20).split('');
           _finished = true;
           _timer.cancel();
+          if (widget.onIntroComplete != null) {
+            widget.onIntroComplete!();
+          }
           // Automatisch zum nächsten Screen wechseln
           Timer(const Duration(seconds: 2), () {
             if (mounted) Navigator.pushReplacementNamed(context, "/");
@@ -59,6 +64,9 @@ class _IntroSlotScreenState extends State<IntroSlotScreen> {
   @override
   void dispose() {
     _timer.cancel();
+          if (widget.onIntroComplete != null) {
+            widget.onIntroComplete!();
+          }
           // Automatisch zum nächsten Screen wechseln
           Timer(const Duration(seconds: 2), () {
             if (mounted) Navigator.pushReplacementNamed(context, "/");
