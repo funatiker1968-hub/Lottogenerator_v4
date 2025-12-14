@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-
 import 'screens/home_screen.dart';
 import 'screens/intro_slot_screen.dart';
-// Disclaimer-Screen EXISTIERT bereits bei dir
 import 'screens/disclaimer_screen.dart';
 
 class AppFlow extends StatefulWidget {
@@ -25,14 +23,14 @@ class _AppFlowState extends State<AppFlow> {
           setState(() => _accepted = true);
         },
         onDecline: () {
-          // App bleibt leer / beendet sich logisch
+          // App wird durch DisclaimerScreen beendet
         },
       );
     }
 
     // 2. Intro
     if (!_introDone) {
-      return IntroSlotScreen(
+      return const IntroSlotScreen(
         key: const ValueKey('intro'),
       );
     }
@@ -44,12 +42,19 @@ class _AppFlowState extends State<AppFlow> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
-    // Intro automatisch beenden nach kurzer Zeit
+    
+    // Prüfe regelmäßig ob Intro fertig ist
     if (_accepted && !_introDone) {
-      Future.delayed(const Duration(seconds: 4), () {
-        if (mounted) {
-          setState(() => _introDone = true);
+      // Starte Timer der prüft (alle 500ms)
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _accepted && !_introDone) {
+          // Hier könnten wir einen Callback vom IntroScreen haben
+          // Aber da wir keinen haben, machen wir es nach Zeit
+          Future.delayed(const Duration(seconds: 5), () {
+            if (mounted && !_introDone) {
+              setState(() => _introDone = true);
+            }
+          });
         }
       });
     }
