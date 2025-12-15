@@ -27,39 +27,32 @@ class _LosnummerWalzenDialogState extends State<LosnummerWalzenDialog> {
   late List<int> _digits;
   late List<bool> _spinning;
   final List<Timer> _timers = [];
-
   bool _finished = false;
 
   @override
   void initState() {
     super.initState();
-
     _digits = List.generate(
       _digitCount,
       (i) => int.tryParse(widget.initialLosnummer[i]) ?? _rng.nextInt(10),
     );
-
     _spinning = List<bool>.filled(_digitCount, true);
-
     _startWalzen();
   }
 
   void _startWalzen() {
     final baseMs = widget.totalDuration.inMilliseconds;
-
     for (int i = 0; i < _digitCount; i++) {
       final stopAfter =
           Duration(milliseconds: (baseMs * (0.6 + i * 0.1)).toInt());
 
-      final timer = Timer.periodic(const Duration(milliseconds: 60), (t) {
+      final timer =
+          Timer.periodic(const Duration(milliseconds: 60), (t) {
         if (!mounted) {
           t.cancel();
           return;
         }
-
-        setState(() {
-          _digits[i] = (_digits[i] + 1) % 10;
-        });
+        setState(() => _digits[i] = (_digits[i] + 1) % 10);
       });
 
       _timers.add(timer);
@@ -77,12 +70,9 @@ class _LosnummerWalzenDialogState extends State<LosnummerWalzenDialog> {
   }
 
   void _checkFinished() {
-    if (_finished) return;
-    if (_spinning.any((e) => e)) return;
-
+    if (_finished || _spinning.any((e) => e)) return;
     _finished = true;
     final result = _digits.join();
-
     Future.delayed(widget.holdDuration, () {
       if (!mounted) return;
       widget.onDone(result);
@@ -116,84 +106,110 @@ class _LosnummerWalzenDialogState extends State<LosnummerWalzenDialog> {
       color: Colors.black.withValues(alpha: 0.85),
       child: Center(
         child: Container(
-          padding: const EdgeInsets.all(16),
+          width: 300,
           decoration: BoxDecoration(
-            color: const Color(0xFF2E2E2E),
-            borderRadius: BorderRadius.circular(14),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: Colors.red, width: 2),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Losnummer',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              // 🔴 Roter Kopfbereich – originalnah
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(8)),
+                ),
+                child: const Text(
+                  'GLÜCKSSPIRALE   •   SPIEL 77   •   SUPER 6   •   SUPERZAHL',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
 
               const SizedBox(height: 10),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(_digitCount, (i) {
-                  final isSuperzahl = i == 6;
-                  return Container(
-                    width: 32,
-                    height: 46,
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      color: isSuperzahl ? Colors.red : Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${_digits[i]}',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: isSuperzahl ? Colors.white : Colors.black,
+              // 🔢 Losnummernfeld (weiß, kompakt)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(_digitCount, (i) {
+                    final isSuperzahl = i == 6;
+                    return Container(
+                      width: 30,
+                      height: 42,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: Colors.black, width: 1),
                       ),
-                    ),
-                  );
-                }),
-              ),
-
-              const SizedBox(height: 6),
-              const Text(
-                'Superzahl',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                      child: Text(
+                        '${_digits[i]}',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isSuperzahl ? Colors.red : Colors.black,
+                        ),
+                      ),
+                    );
+                  }),
                 ),
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 6),
+
+              // ─ Linien & Beschriftung (GS / S77 / S6)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Column(
+                  children: const [
+                    Divider(thickness: 1, color: Colors.black),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'Superzahl (7. Ziffer)',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
 
               SizedBox(
-                width: 140,
-                height: 40,
+                width: 120,
+                height: 36,
                 child: ElevatedButton(
                   onPressed: _stopAll,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
                     foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                   child: const Text(
                     'STOPP',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
+
+              const SizedBox(height: 12),
             ],
           ),
         ),
