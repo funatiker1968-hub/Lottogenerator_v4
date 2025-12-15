@@ -1,3 +1,4 @@
+// ignore_for_file: unused_element
 // BLOCK 1: IMPORTS & ROOT WIDGET
 // ============================================================================
 import 'dart:async';
@@ -808,7 +809,6 @@ Widget _buildLosnummerBox() {
 
   Widget _buildLaufzeitUndEinsatzBox(double einsatz) {
     return Container(
-),
       height: 90,
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
