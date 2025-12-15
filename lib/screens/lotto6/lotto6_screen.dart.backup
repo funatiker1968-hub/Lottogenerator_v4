@@ -808,7 +808,6 @@ Widget _buildLosnummerBox() {
 
   Widget _buildLaufzeitUndEinsatzBox(double einsatz) {
     return Container(
-),
       height: 90,
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
