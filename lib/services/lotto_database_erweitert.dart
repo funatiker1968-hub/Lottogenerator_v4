@@ -1,111 +1,75 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'lotto_database.dart';
 import '../models/lotto_data.dart';
 
 class ErweiterteLottoDatenbank {
-  static Database? _db;
+  static final LottoDatabase _db = LottoDatabase();
 
-  // --- Datenbank laden oder erstellen ---
-  static Future<Database> _getDb() async {
-    if (_db != null) return _db!;
-
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'lottodaten.db');
-
-    _db = await openDatabase(
-      path,
-      version: 1,
-      onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE IF NOT EXISTS ziehungen (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            datum TEXT NOT NULL,
-            spieltyp TEXT NOT NULL,
-            zahlen TEXT NOT NULL,
-            superzahl INTEGER NOT NULL
-          );
-        ''');
-      },
-    );
-
-    return _db!;
-  }
-
-  // --- Helfer ---
-  static String _serializeZahlen(List<int> zahlen) => zahlen.join(',');
-
-  static List<int> _parseZahlen(String daten) =>
-      daten.split(',').map(int.parse).toList();
-
-  // --- Existenzprüfung ---
+  // ------------------------------------------------------------
+  // Prüfen ob Ziehung existiert (POSitional – wichtig!)
+  // ------------------------------------------------------------
   static Future<bool> pruefeObSchonVorhanden(
-      String spieltyp, DateTime datum) async {
-    final db = await _getDb();
-    final result = await db.query(
-      'ziehungen',
-      where: 'spieltyp = ? AND datum = ?',
-      whereArgs: [spieltyp, datum.toIso8601String()],
+    String spieltyp,
+    DateTime datum,
+  ) async {
+    final res = await _db.rawQuery(
+      'SELECT 1 FROM ziehungen WHERE spieltyp = ? AND datum = ? LIMIT 1',
+      [spieltyp, datum.toIso8601String()],
     );
-    return result.isNotEmpty;
+    return res.isNotEmpty;
   }
 
-  // --- Insert ---
+  // ------------------------------------------------------------
+  // Ziehung speichern
+  // ------------------------------------------------------------
   static Future<void> fuegeZiehungWennNeu(LottoZiehung z) async {
-    final vorhanden =
-        await pruefeObSchonVorhanden(z.spieltyp, z.datum);
-    if (vorhanden) return;
+    final exists = await pruefeObSchonVorhanden(z.spieltyp, z.datum);
+    if (exists) return;
 
-    final db = await _getDb();
-    await db.insert('ziehungen', {
-      'datum': z.datum.toIso8601String(),
-      'spieltyp': z.spieltyp,
-      'zahlen': _serializeZahlen(z.zahlen),
-      'superzahl': z.superzahl,
-    });
+    await _db.insert(
+      'ziehungen',
+      z.toMap(),
+    );
   }
 
-  // --- Für Statistik / Anzeige ---
-  static Future<List<LottoZiehung>> holeLetzteZiehungen({
-    required String spieltyp,
-    required int limit,
-  }) async {
-    final db = await _getDb();
-    final data = await db.query(
+  // ------------------------------------------------------------
+  // Alle Ziehungen eines Spieltyps (für Statistik)
+  // ------------------------------------------------------------
+  static Future<List<LottoZiehung>> holeAlleZiehungen(
+    String spieltyp,
+  ) async {
+    final rows = await _db.query(
       'ziehungen',
       where: 'spieltyp = ?',
       whereArgs: [spieltyp],
-      orderBy: 'datum DESC',
-      limit: limit,
+      orderBy: 'datum ASC',
     );
 
-    return data.map((row) {
-      return LottoZiehung(
-        datum: DateTime.parse(row['datum'] as String),
-        spieltyp: row['spieltyp'] as String,
-        zahlen: _parseZahlen(row['zahlen'] as String),
-        superzahl: row['superzahl'] as int,
-      );
-    }).toList();
+    return rows.map(LottoZiehung.fromMap).toList();
   }
 
-  // --- Für Import-Check (WICHTIG für Eurojackpot) ---
-  static Future<List<LottoZiehung>> holeAlleZiehungen({
-    required String spieltyp,
-  }) async {
-    final db = await _getDb();
-    final data = await db.query(
-      'ziehungen',
-      where: 'spieltyp = ?',
-      whereArgs: [spieltyp],
+  // ------------------------------------------------------------
+  // Anzahl Ziehungen
+  // ------------------------------------------------------------
+  static Future<int> anzahlZiehungen(String spieltyp) async {
+    final res = await _db.rawQuery(
+      'SELECT COUNT(*) as c FROM ziehungen WHERE spieltyp = ?',
+      [spieltyp],
+    );
+    return res.first['c'] as int;
+  }
+
+  // ------------------------------------------------------------
+  // Letztes Ziehungsdatum
+  // ------------------------------------------------------------
+  static Future<DateTime?> holeLetztesZiehungsDatum(
+    String spieltyp,
+  ) async {
+    final res = await _db.rawQuery(
+      'SELECT datum FROM ziehungen WHERE spieltyp = ? ORDER BY datum DESC LIMIT 1',
+      [spieltyp],
     );
 
-    return data.map((row) {
-      return LottoZiehung(
-        datum: DateTime.parse(row['datum'] as String),
-        spieltyp: row['spieltyp'] as String,
-        zahlen: _parseZahlen(row['zahlen'] as String),
-        superzahl: row['superzahl'] as int,
-      );
-    }).toList();
+    if (res.isEmpty) return null;
+    return DateTime.parse(res.first['datum'] as String);
   }
 }
