@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import '../models/lotto_data.dart';
-import 'lotto_database_erweitert.dart';
 
 class EurojackpotImportService {
   EurojackpotImportService._();

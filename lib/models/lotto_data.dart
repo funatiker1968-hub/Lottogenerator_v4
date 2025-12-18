@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class LottoZiehung {
   final DateTime datum;
   final List<int> zahlen;
@@ -10,6 +12,16 @@ class LottoZiehung {
     required this.superzahl,
     required this.spieltyp,
   });
+
+  // Factory-Methode zum Erstellen aus einer Datenbank-Map
+  factory LottoZiehung.fromMap(Map<String, dynamic> map) {
+    return LottoZiehung(
+      spieltyp: map['spieltyp'],
+      datum: DateTime.parse(map['datum']), // Annahme: datum ist ISO-String (YYYY-MM-DD)
+      zahlen: List<int>.from(json.decode(map['zahlen'])),
+      superzahl: map['superzahl'],
+    );
+  }
 
   String get formatierterDatum =>
       '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}.${datum.year}';
