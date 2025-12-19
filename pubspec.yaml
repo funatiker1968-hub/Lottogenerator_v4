@@ -24,6 +24,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/data/lotto_6aus49.json
+    - assets/data/lotto_1955_2025.txt
     - assets/data/eurojackpot_2012_2025.txt
-
