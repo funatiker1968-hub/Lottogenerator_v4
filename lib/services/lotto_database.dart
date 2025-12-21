@@ -3,6 +3,9 @@ import 'package:path/path.dart';
 import 'package:flutter/services.dart';
 
 class LottoDatabase {
+  LottoDatabase._();
+  static final LottoDatabase instance = LottoDatabase._();
+
   static Database? _db;
 
   Future<Database> get database async {
@@ -11,13 +14,9 @@ class LottoDatabase {
     return _db!;
   }
 
-  static Future<Database> getDatabase() async {
-    return LottoDatabase().database;
-  }
-
   Future<Database> _initDb() async {
     final path = join(await getDatabasesPath(), 'lotto.db');
-    return await openDatabase(
+    return openDatabase(
       path,
       version: 1,
       onCreate: (db, version) async {
@@ -27,74 +26,50 @@ class LottoDatabase {
             spieltyp TEXT NOT NULL,
             datum TEXT NOT NULL,
             zahlen TEXT NOT NULL,
-            superzahl INTEGER
+            superzahl INTEGER NOT NULL
           )
         ''');
-        print('✅ Tabelle erstellt. Starte Import...');
-        await _importAllFromTxt(db);
-      },
-      onOpen: (db) async {
-        // KEINE Prüfung mehr - Import passiert nur bei Neuerstellung
-        final count = Sqflite.firstIntValue(
-          await db.rawQuery('SELECT COUNT(*) FROM ziehungen')
-        );
-        print('📊 Datenbank hat $count Einträge.');
       },
     );
   }
 
-  Future<void> _importAllFromTxt(Database db) async {
-    // 1. Lotto 6aus49
-    try {
-      final content = await rootBundle.loadString('assets/data/lotto_1955_2025.txt');
-      final lines = content.split('\n');
-      print('📥 Importiere ${lines.length} Lotto-Zeilen...');
-      
-      for (final line in lines) {
-        if (line.trim().isEmpty) continue;
-        final parts = line.split(' | ');
-        if (parts.length != 3) continue;
-        
-        await db.insert('ziehungen', {
-          'spieltyp': '6aus49',
-          'datum': parts[0].trim(),
-          'zahlen': parts[1].trim(),
-          'superzahl': int.tryParse(parts[2].trim()) ?? 0,
-        });
-      }
-      print('✅ Lotto importiert.');
-    } catch (e) {
-      print('❌ Lotto-Importfehler: $e');
-    }
-
-    // 2. Eurojackpot
-    try {
-      final content = await rootBundle.loadString('assets/data/eurojackpot_2012_2025.txt');
-      final lines = content.split('\n');
-      print('📥 Importiere ${lines.length} Eurojackpot-Zeilen...');
-      
-      for (final line in lines) {
-        if (line.trim().isEmpty) continue;
-        final parts = line.split(' | ');
-        if (parts.length != 3) continue;
-        
-        await db.insert('ziehungen', {
-          'spieltyp': 'eurojackpot',
-          'datum': parts[0].trim(),
-          'zahlen': parts[1].trim(),
-          'superzahl': int.tryParse(parts[2].trim()) ?? 0,
-        });
-      }
-      print('✅ Eurojackpot importiert.');
-    } catch (e) {
-      print('❌ Eurojackpot-Importfehler: $e');
-    }
+  Future<void> importLotto() async {
+    final db = await database;
+    await _importFromTxt(
+      db,
+      asset: 'assets/data/lotto_1955_2025.txt',
+      spieltyp: '6aus49',
+    );
   }
 
-  Future<void> close() async {
-    if (_db != null) {
-      await _db!.close();
-      _db = null;
+  Future<void> importEurojackpot() async {
+    final db = await database;
+    await _importFromTxt(
+      db,
+      asset: 'assets/data/eurojackpot_2012_2025.txt',
+      spieltyp: 'eurojackpot',
+    );
+  }
+
+  Future<void> _importFromTxt(
+    Database db, {
+    required String asset,
+    required String spieltyp,
+  }) async {
+    final content = await rootBundle.loadString(asset);
+    final lines = content.split('\n');
+
+    for (final line in lines) {
+      if (line.trim().isEmpty) continue;
+      final parts = line.split(' | ');
+      if (parts.length != 3) continue;
+
+      await db.insert('ziehungen', {
+        'spieltyp': spieltyp,
+        'datum': parts[0].trim(),
+        'zahlen': parts[1].trim(),
+        'superzahl': int.tryParse(parts[2].trim()) ?? 0,
+      });
     }
   }
 
@@ -105,5 +80,12 @@ class LottoDatabase {
       [spieltyp],
     );
     return Sqflite.firstIntValue(res) ?? 0;
+  }
+
+  Future<void> close() async {
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+    }
   }
 }
