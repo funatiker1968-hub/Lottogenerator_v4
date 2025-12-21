@@ -15,9 +15,30 @@ class LottoZiehung {
 
   // Factory-Methode zum Erstellen aus einer Datenbank-Map
   factory LottoZiehung.fromMap(Map<String, dynamic> map) {
+    final dateStr = map['datum'] as String;
+    DateTime datum;
+    
+    try {
+      // Versuche ISO-Format zuerst
+      datum = DateTime.parse(dateStr);
+    } catch (e) {
+      // Fallback für DD.MM.YYYY Format
+      final parts = dateStr.split('.');
+      if (parts.length == 3) {
+        datum = DateTime(
+          int.parse(parts[2]),
+          int.parse(parts[1]),
+          int.parse(parts[0]),
+        );
+      } else {
+        // Wenn gar nichts klappt: heute
+        datum = DateTime.now();
+      }
+    }
+    
     return LottoZiehung(
       spieltyp: map['spieltyp'],
-      datum: DateTime.parse(map['datum']),
+      datum: datum,
       zahlen: List<int>.from(json.decode(map['zahlen'])),
       superzahl: map['superzahl'],
     );
@@ -27,7 +48,7 @@ class LottoZiehung {
   Map<String, dynamic> toMap() {
     return {
       'spieltyp': spieltyp,
-      'datum': datum.toIso8601String(),
+      'datum': datum.toIso8601String(), // Immer ISO speichern
       'zahlen': json.encode(zahlen),
       'superzahl': superzahl,
     };
