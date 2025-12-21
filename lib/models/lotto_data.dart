@@ -17,10 +17,20 @@ class LottoZiehung {
   factory LottoZiehung.fromMap(Map<String, dynamic> map) {
     return LottoZiehung(
       spieltyp: map['spieltyp'],
-      datum: DateTime.parse(map['datum']), // Annahme: datum ist ISO-String (YYYY-MM-DD)
+      datum: DateTime.parse(map['datum']),
       zahlen: List<int>.from(json.decode(map['zahlen'])),
       superzahl: map['superzahl'],
     );
+  }
+
+  // Methode zum Konvertieren in Map für Datenbank
+  Map<String, dynamic> toMap() {
+    return {
+      'spieltyp': spieltyp,
+      'datum': datum.toIso8601String(),
+      'zahlen': json.encode(zahlen),
+      'superzahl': superzahl,
+    };
   }
 
   String get formatierterDatum =>

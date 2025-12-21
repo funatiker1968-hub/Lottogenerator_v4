@@ -1,0 +1,12 @@
+export 'statistics_facade.dart';
+export 'statistics_models.dart';
+export 'db_inspection_service.dart';
+export 'frequency_service.dart';
+export 'gap_service.dart';
+export 'parity_service.dart';
+export 'cluster_service.dart';
+export 'sum_service.dart';
+export 'pair_service.dart';
+export 'eurojackpot_statistics_service.dart';
+export 'simulation_service.dart';
+export 'generator_service.dart';
