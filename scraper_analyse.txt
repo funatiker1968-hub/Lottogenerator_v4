@@ -1,0 +1,47 @@
+ZUSAMMENFASSENDE ANALYSE DER WEB-SCRAPER
+=======================================
+
+VORHANDENE SCRAPER-DATEIEN:
+1. lib/services/lottozahlenonline_scraper.dart
+   - URL: https://www.lottozahlenonline.de/statistik/beide-spieltage/lottozahlen-archiv.php?j=JAHR
+   - Ziel: Lotto 6aus49 Ziehungen pro Jahr
+   - Status: POTENZIELL FUNKTIONAL (Tabelle direkt im HTML)
+
+2. lib/services/eurojackpot_scraper.dart
+   - URL: https://www.eurojackpot-zahlen.eu/eurojackpot-zahlenarchiv.php?j=JAHR
+   - Ziel: Eurojackpot Ziehungen pro Jahr
+   - Status: PROBLEMATISCH (URL nicht verifiziert, möglicherweise andere Domain)
+
+BEKANNTE PROBLEME:
+- Eurojackpot-URL könnte falsch sein
+- JavaScript-geladene Tabellen (z.B. lottozahlende.de) können nicht gescraped werden
+- Keine Fehlerbehandlung bei Netzwerkausfällen
+- Keine Duplikatprüfung vor DB-Insert
+
+FLUTTER-ABHÄNGIGKEITEN (VORHANDEN ✅):
+  dependencies:
+    http: ^1.6.0      # Für Web-Requests
+    html: ^0.15.0     # Für HTML-Parsing
+    sqflite: ^2.2.0   # Für Datenbank
+    path: ^1.8.0      # Für Pfad-Operationen
+
+EMPFOHLENE VORGEWEHENSWEISE FÜR UPDATE-SERVICE:
+
+1. PRIO 1: Datenbank-Import korrigieren (aktuell in Arbeit)
+   - Echte Statusmeldungen statt Fake-Progress
+   - Beide Formate korrekt verarbeiten (dd.mm.yyyy und yyyy-mm-dd)
+
+2. PRIO 2: Scraper testen und aktualisieren
+   - Lotto-Scraper mit aktueller URL testen
+   - Eurojackpot-Scraper mit korrekter URL (evtl. lottozahlende.de)
+   - Fallback auf TXT-Dateien wenn Scraping fehlschlägt
+
+3. PRIO 3: Update-Service in DatabaseStatusScreen integrieren
+   - "Letzte 10 Ziehungen importieren" Button
+   - Echte Fortschrittsanzeige
+   - Log-Ausgabe im Terminal-Fenster
+
+NÄCHSTE AKTIONEN:
+1. Commit & Push für aktuellen Stand (Import-Korrektur)
+2. Codemagic-Build testen
+3. Wenn Import funktioniert: Scraper-Test implementieren

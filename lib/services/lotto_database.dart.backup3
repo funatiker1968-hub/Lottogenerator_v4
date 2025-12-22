@@ -1,0 +1,163 @@
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import 'package:flutter/services.dart';
+import '../models/lotto_data.dart';
+
+class LottoDatabase {
+  LottoDatabase._();
+  static final LottoDatabase instance = LottoDatabase._();
+  
+  static Database? _db;
+  
+  Future<Database> get database async {
+    if (_db != null) return _db!;
+    _db = await _initDb();
+    return _db!;
+  }
+
+  Future<Database> _initDb() async {
+    final path = join(await getDatabasesPath(), 'lottodaten.db');
+    print('[DB] 📍 Pfad: $path');
+    
+    return await openDatabase(
+      path,
+      version: 1,
+      onCreate: (db, version) async {
+        print('[DB] 🏗️  Erstelle Tabelle ziehungen...');
+        await db.execute('''
+          CREATE TABLE ziehungen (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            spieltyp TEXT NOT NULL,
+            datum TEXT NOT NULL,
+            zahlen TEXT NOT NULL,
+            superzahl INTEGER
+          )
+        ''');
+        print('[DB] ✅ Tabelle erstellt.');
+        await _importAllFromTxt(db);
+      },
+      onOpen: (db) async {
+        final count = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM ziehungen')
+        ) ?? 0;
+        
+        print('[DB] 📊 Datenbank geöffnet. Enthält $count Einträge.');
+        
+        if (count == 0) {
+          print('[DB] ⚠️  Datenbank ist LEER. Starte Import...');
+          await _importAllFromTxt(db);
+          
+          final newCount = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM ziehungen')
+          ) ?? 0;
+          print('[DB] 📈 Nach Import: $newCount Einträge.');
+        } else {
+          print('[DB] ✅ Datenbank bereits gefüllt.');
+        }
+      },
+    );
+  }
+
+  Future<void> _importAllFromTxt(Database db) async {
+    print('[DB] 🚀 STARTE IMPORT AUS TXT-DATEIEN');
+    
+    // 1. Lotto 6aus49 (Format: dd.mm.yyyy | z1 z2 z3 z4 z5 z6 | sz)
+    try {
+      print('[DB] 📥 Lese Lotto 6aus49 Daten...');
+      final content = await rootBundle.loadString('assets/data/lotto_1955_2025.txt');
+      final lines = content.split('\n');
+      int imported = 0;
+      
+      for (final line in lines) {
+        if (line.trim().isEmpty) continue;
+        final parts = line.split('|');
+        if (parts.length != 3) continue;
+        
+        final datum = parts[0].trim(); // dd.mm.yyyy
+        final zahlen = parts[1].trim();
+        final superzahl = parts[2].trim();
+        
+        await db.insert('ziehungen', {
+          'spieltyp': '6aus49',
+          'datum': datum,
+          'zahlen': zahlen,
+          'superzahl': int.tryParse(superzahl) ?? 0,
+        });
+        
+        imported++;
+        if (imported % 1000 == 0) {
+          print('[DB] ... $imported Lotto-Zeilen importiert');
+        }
+      }
+      print('[DB] ✅ Lotto 6aus49: $imported Ziehungen importiert');
+    } catch (e) {
+      print('[DB] ❌ Lotto-Importfehler: $e');
+    }
+    
+    // 2. Eurojackpot (Format: yyyy-mm-dd | z1 z2 z3 z4 z5 | e1 e2)
+    try {
+      print('[DB] 📥 Lese Eurojackpot Daten...');
+      final content = await rootBundle.loadString('assets/data/eurojackpot_2012_2025.txt');
+      final lines = content.split('\n');
+      int imported = 0;
+      
+      for (final line in lines) {
+        if (line.trim().isEmpty || line.startsWith('#')) continue;
+        final parts = line.split('|');
+        if (parts.length != 3) continue;
+        
+        final datum = parts[0].trim(); // yyyy-mm-dd
+        final zahlen = parts[1].trim();
+        final eurozahlen = parts[2].trim();
+        
+        // Kombiniere Haupt- und Eurozahlen
+        final alleZahlen = '$zahlen $eurozahlen';
+        
+        await db.insert('ziehungen', {
+          'spieltyp': 'eurojackpot',
+          'datum': datum,
+          'zahlen': alleZahlen,
+          'superzahl': 0, // Eurojackpot hat keine Superzahl
+        });
+        
+        imported++;
+        if (imported % 100 == 0) {
+          print('[DB] ... $imported EJ-Zeilen importiert');
+        }
+      }
+      print('[DB] ✅ Eurojackpot: $imported Ziehungen importiert');
+    } catch (e) {
+      print('[DB] ❌ Eurojackpot-Importfehler: $e');
+    }
+    
+    print('[DB] 🎉 IMPORT ABGESCHLOSSEN');
+  }
+
+  Future<void> close() async {
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+      print('[DB] 🔒 Datenbank geschlossen');
+    }
+  }
+
+  Future<int> anzahlZiehungen(String spieltyp) async {
+    final db = await database;
+    final res = await db.rawQuery(
+      'SELECT COUNT(*) FROM ziehungen WHERE spieltyp = ?',
+      [spieltyp],
+    );
+    return Sqflite.firstIntValue(res) ?? 0;
+  }
+  
+  Future<List<LottoZiehung>> holeAlleZiehungen(String spieltyp) async {
+    final db = await database;
+    final rows = await db.query(
+      'ziehungen',
+      where: 'spieltyp = ?',
+      whereArgs: [spieltyp],
+      orderBy: 'datum ASC',
+    );
+    return rows.map(LottoZiehung.fromMap).toList();
+  }
+}

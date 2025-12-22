@@ -1,32 +1,46 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:lottogenerator_v4/services/lotto_database.dart';
-import 'package:lottogenerator_v4/services/auto_update_service.dart'; // NEUER IMPORT
+#!/bin/bash
 
-enum LogType { info, warning, error, success }
+echo "🛠️ Erstelle funktionierende database_status_screen.dart..."
+
+# Backup der aktuellen Datei
+cp lib/screens/database_status_screen.dart lib/screens/database_status_screen.dart.backup_final
+
+# Erstelle korrigierte Version
+cat > lib/screens/database_status_screen.dart << 'WORKING_CODE'
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // für rootBundle
+import 'package:lottogenerator_v4/services/lotto_database.dart';
+
+// Externe Definitionen (außerhalb der State-Klasse)
+enum LogType {
+  info,
+  warning,
+  error,
+  success
+}
 
 class LogEntry {
   final DateTime timestamp;
   final LogType type;
   final String message;
-
+  
   LogEntry(this.timestamp, this.type, this.message);
-
+  
   @override
   String toString() {
-    final timeStr = '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}:${timestamp.second.toString().padLeft(2, '0')}';
+    final timeStr = '\${timestamp.hour.toString().padLeft(2, '0')}:\${timestamp.minute.toString().padLeft(2, '0')}:\${timestamp.second.toString().padLeft(2, '0')}';
     
     switch (type) {
       case LogType.info:
-        return '[$timeStr] ℹ️  $message';
+        return '[\$timeStr] ℹ️  \$message';
       case LogType.warning:
-        return '[$timeStr] ⚠️  $message';
+        return '[\$timeStr] ⚠️  \$message';
       case LogType.error:
-        return '[$timeStr] ❌ $message';
+        return '[\$timeStr] ❌ \$message';
       case LogType.success:
-        return '[$timeStr] ✅ $message';
+        return '[\$timeStr] ✅ \$message';
       default:
-        return '[$timeStr] $message';
+        return '[\$timeStr] \$message';
     }
   }
 }
@@ -39,15 +53,13 @@ class DatabaseStatusScreen extends StatefulWidget {
 }
 
 class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
-  final LottoDatabase _db = LottoDatabase.instance;
-  final AutoUpdateService _updateService = AutoUpdateService(); // NEUE INSTANZ
+  final LottoDatabase _db = LottoDatabase();
   final List<LogEntry> _logs = [];
   bool _isImporting = false;
-  bool _isUpdating = false; // NEUE VARIABLE
   double _importProgress = 0.0;
   bool _isLoading = false;
   final ScrollController _scrollController = ScrollController();
-
+  
   Map<String, String> _databaseInfo = {
     'Lotto 6aus49': 'Lädt...',
     'Eurojackpot': 'Lädt...',
@@ -70,7 +82,8 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
         _logs.removeAt(0);
       }
     });
-
+    
+    // Auto-scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -87,33 +100,36 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
       setState(() {
         _importProgress = progress;
       });
-      _addLog(LogType.info, '${(progress * 100).toStringAsFixed(0)}%: $message');
+      _addLog(LogType.info, '\${(progress * 100).toStringAsFixed(0)}%: \$message');
     }
   }
 
   Future<void> _loadDatabaseInfo() async {
     setState(() => _isLoading = true);
-
+    
     try {
       final db = await _db.database;
-
+      
+      // Lotto 6aus49 Einträge zählen
       final lottoCount = await db.rawQuery(
         "SELECT COUNT(*) as count FROM ziehungen WHERE spieltyp = 'lotto_6aus49'"
       );
       final lottoNum = lottoCount.first['count'] as int;
-
+      
+      // Eurojackpot Einträge zählen
       final ejCount = await db.rawQuery(
         "SELECT COUNT(*) as count FROM ziehungen WHERE spieltyp = 'eurojackpot'"
       );
       final ejNum = ejCount.first['count'] as int;
-
+      
+      // Datumsbereiche
       final lottoFirst = await db.rawQuery(
         "SELECT MIN(datum) as first FROM ziehungen WHERE spieltyp = 'lotto_6aus49'"
       );
       final lottoLast = await db.rawQuery(
         "SELECT MAX(datum) as last FROM ziehungen WHERE spieltyp = 'lotto_6aus49'"
       );
-
+      
       final ejFirst = await db.rawQuery(
         "SELECT MIN(datum) as first FROM ziehungen WHERE spieltyp = 'eurojackpot'"
       );
@@ -123,24 +139,26 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
 
       setState(() {
         _databaseInfo = {
-          'Lotto 6aus49': '$lottoNum Einträge\n'
-                         'Von: ${_formatDate(lottoFirst.first['first'] as String? ?? '')}\n'
-                         'Bis: ${_formatDate(lottoLast.first['last'] as String? ?? '')}',
-          'Eurojackpot': '$ejNum Einträge\n'
-                        'Von: ${_formatDate(ejFirst.first['first'] as String? ?? '')}\n'
-                        'Bis: ${_formatDate(ejLast.first['last'] as String? ?? '')}',
-          'Gesamt': '${lottoNum + ejNum} Einträge insgesamt'
+          'Lotto 6aus49': '\$lottoNum Einträge\\n'
+                         'Von: \${_formatDate(lottoFirst.first['first'] as String? ?? '')}\\n'
+                         'Bis: \${_formatDate(lottoLast.first['last'] as String? ?? '')}',
+          
+          'Eurojackpot': '\$ejNum Einträge\\n'
+                        'Von: \${_formatDate(ejFirst.first['first'] as String? ?? '')}\\n'
+                        'Bis: \${_formatDate(ejLast.first['last'] as String? ?? '')}',
+          
+          'Gesamt': '\${lottoNum + ejNum} Einträge insgesamt'
         };
       });
-
-      _addLog(LogType.success, 'Datenbank-Statistik geladen: $lottoNum Lotto, $ejNum Eurojackpot');
-
+      
+      _addLog(LogType.success, 'Datenbank-Statistik geladen: \$lottoNum Lotto, \$ejNum Eurojackpot');
+      
     } catch (e) {
-      _addLog(LogType.error, 'Fehler beim Laden der Datenbank-Info: $e');
+      _addLog(LogType.error, 'Fehler beim Laden der Datenbank-Info: \$e');
       setState(() {
         _databaseInfo = {
           'Lotto 6aus49': 'Fehler',
-          'Eurojackpot': 'Fehler',
+          'Eurojackpot': 'Fehler', 
           'Gesamt': 'Fehler'
         };
       });
@@ -155,7 +173,7 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
       if (dateStr.contains('-')) {
         final parts = dateStr.split('-');
         if (parts.length == 3) {
-          return '${parts[0]}.${parts[1]}.${parts[2]}';
+          return '\${parts[0]}.\${parts[1]}.\${parts[2]}';
         }
       }
       return dateStr;
@@ -166,42 +184,44 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
 
   Future<void> _triggerReimport() async {
     if (_isImporting) return;
-
+    
     setState(() {
       _isImporting = true;
       _importProgress = 0.0;
     });
-
+    
     _addLog(LogType.warning, '🚀 START: Kompletter Neu-Import aus TXT-Dateien');
-
+    
     try {
       final database = await _db.database;
-
+      
+      // SCHRITT 1: DATENBANK LEEREN
       _updateProgress(0.1, 'Lösche alte Daten...');
       await database.delete('ziehungen');
       _addLog(LogType.success, '✅ Alte Daten gelöscht');
-
+      
+      // SCHRITT 2: LOTTO 6AUS49 IMPORTIEREN
       _updateProgress(0.2, 'Importiere Lotto 6aus49...');
       _addLog(LogType.info, '📥 Lese Lotto-Daten...');
-
+      
       try {
         final content = await rootBundle.loadString('assets/data/lotto_1955_2025.txt');
-        final lines = content.split('\n');
+        final lines = content.split('\\n');
         int imported = 0;
         int total = lines.length;
-
+        
         for (final line in lines) {
           if (line.trim().isEmpty) continue;
           final parts = line.split('|');
           if (parts.length != 3) continue;
-
+          
           final datum = parts[0].trim();
           final zahlen = parts[1].trim();
           final superzahl = int.tryParse(parts[2].trim()) ?? 0;
-
+          
           final datumParts = datum.split('.');
           if (datumParts.length == 3) {
-            final dbDatum = '${datumParts[0]}-${datumParts[1]}-${datumParts[2]}';
+            final dbDatum = '\${datumParts[0]}-\${datumParts[1]}-\${datumParts[2]}';
             
             await database.insert('ziehungen', {
               'spieltyp': 'lotto_6aus49',
@@ -209,74 +229,76 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
               'zahlen': zahlen,
               'superzahl': superzahl
             });
-
+            
             imported++;
           }
-
+          
           if (imported % 100 == 0) {
             final progress = 0.2 + (0.4 * imported / total);
-            _updateProgress(progress, 'Lotto: $imported/$total');
+            _updateProgress(progress, 'Lotto: \$imported/\$total');
           }
         }
-
-        _addLog(LogType.success, '✅ $imported Lotto-Ziehungen importiert');
+        
+        _addLog(LogType.success, '✅ \$imported Lotto-Ziehungen importiert');
         _updateProgress(0.6, 'Lotto-Import abgeschlossen');
-
+        
       } catch (e) {
-        _addLog(LogType.error, '❌ Lotto-Import Fehler: $e');
+        _addLog(LogType.error, '❌ Lotto-Import Fehler: \$e');
       }
-
+      
+      // SCHRITT 3: EUROJACKPOT IMPORTIEREN
       _updateProgress(0.65, 'Importiere Eurojackpot...');
       _addLog(LogType.info, '📥 Lese Eurojackpot-Daten...');
-
+      
       try {
         final content = await rootBundle.loadString('assets/data/eurojackpot_2012_2025.txt');
-        final lines = content.split('\n');
+        final lines = content.split('\\n');
         int imported = 0;
         int total = lines.length;
-
+        
         for (final line in lines) {
           if (line.trim().isEmpty) continue;
           final parts = line.split('|');
           if (parts.length != 3) continue;
-
+          
           final datum = parts[0].trim();
           final hauptzahlen = parts[1].trim();
           final eurozahlen = parts[2].trim();
-          final zahlen = '$hauptzahlen $eurozahlen';
-
+          final zahlen = '\$hauptzahlen \$eurozahlen';
+          
           await database.insert('ziehungen', {
             'spieltyp': 'eurojackpot',
             'datum': datum,
             'zahlen': zahlen,
             'superzahl': 0
           });
-
+          
           imported++;
-
+          
           if (imported % 50 == 0) {
             final progress = 0.65 + (0.3 * imported / total);
-            _updateProgress(progress, 'Eurojackpot: $imported/$total');
+            _updateProgress(progress, 'Eurojackpot: \$imported/\$total');
           }
         }
-
-        _addLog(LogType.success, '✅ $imported Eurojackpot-Ziehungen importiert');
+        
+        _addLog(LogType.success, '✅ \$imported Eurojackpot-Ziehungen importiert');
         _updateProgress(0.95, 'Eurojackpot-Import abgeschlossen');
-
+        
       } catch (e) {
-        _addLog(LogType.error, '❌ Eurojackpot-Import Fehler: $e');
+        _addLog(LogType.error, '❌ Eurojackpot-Import Fehler: \$e');
       }
-
+      
+      // SCHRITT 4: ABSCHLUSS
       await Future.delayed(const Duration(milliseconds: 500));
       _updateProgress(1.0, 'Import komplett abgeschlossen');
-
+      
       _addLog(LogType.success, '🎉 DATENBANK NEU GELADEN: Lotto + Eurojackpot');
       _addLog(LogType.info, 'ℹ️  Statistik wird aktualisiert...');
-
+      
       await _loadDatabaseInfo();
-
+      
     } catch (e) {
-      _addLog(LogType.error, '❌ IMPORT FEHLGESCHLAGEN: $e');
+      _addLog(LogType.error, '❌ IMPORT FEHLGESCHLAGEN: \$e');
     } finally {
       if (mounted) {
         setState(() => _isImporting = false);
@@ -284,53 +306,17 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
     }
   }
 
-  // NEUE METHODE: Automatisches Update
-  Future<void> _performAutoUpdate() async {
-    if (_isUpdating || _isImporting) return;
-
-    setState(() => _isUpdating = true);
-    _addLog(LogType.warning, '🔄 Starte automatisches Update...');
-
-    try {
-      final result = await _updateService.updateCurrentYear();
-      
-      final imported = result['imported'] ?? 0;
-      final errors = result['errors'] ?? 0;
-      final totalLines = result['total_lines'] ?? 0;
-
-      if (errors == 0 && imported > 0) {
-        _addLog(LogType.success, '✅ Update erfolgreich: $imported neue Ziehungen');
-        _addLog(LogType.info, '📊 Gefunden: $totalLines Zeilen, Importiert: $imported');
-      } else if (imported == 0 && totalLines > 0) {
-        _addLog(LogType.warning, '⚠️  Keine neuen Daten: Alle $totalLines Zeilen bereits vorhanden');
-      } else if (errors > 0) {
-        _addLog(LogType.error, '❌ Update mit Fehlern: $errors Fehler, $imported importiert');
-      } else {
-        _addLog(LogType.info, 'ℹ️  Update abgeschlossen: $imported importiert, $errors Fehler');
-      }
-
-      await _loadDatabaseInfo();
-
-    } catch (e) {
-      _addLog(LogType.error, '❌ Update-Fehler: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isUpdating = false);
-      }
-    }
-  }
-
   void _showManualImportDialog(String spieltyp) {
     final controller = TextEditingController();
     bool isImporting = false;
-
+    
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text('Manuell $spieltyp importieren'),
+              title: Text('Manuell \$spieltyp importieren'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -342,7 +328,7 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                     minLines: 5,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      hintText: '101.01.2025Mi37151826332\n204.01.2025Sa26243036452\n...',
+                      hintText: '101.01.2025Mi37151826332\\n204.01.2025Sa26243036452\\n...',
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -360,43 +346,46 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                 ElevatedButton(
                   onPressed: isImporting ? null : () async {
                     setState(() => isImporting = true);
-
+                    
                     try {
+                      final db = LottoDatabase();
                       final text = controller.text;
-                      _addLog(LogType.info, 'Starte manuellen $spieltyp Import...');
-
+                      
+                      _addLog(LogType.info, 'Starte manuellen \$spieltyp Import...');
+                      
                       Map<String, int> result;
-
+                      
                       if (spieltyp == 'lotto') {
-                        result = await _db.importLotto6aus49Manually(text);
+                        result = await db.importLotto6aus49Manually(text);
                       } else {
-                        result = await _db.importEurojackpotManually(text);
+                        result = await db.importEurojackpotManually(text);
                       }
-
+                      
                       _addLog(LogType.success, 'Manueller Import abgeschlossen!');
-                      _addLog(LogType.info, 'Importiert: ${result['imported']}');
-                      _addLog(LogType.info, 'Übersprungen: ${result['skipped']}');
-                      _addLog(LogType.info, 'Fehler: ${result['errors']}');
-
+                      _addLog(LogType.info, 'Importiert: \${result['imported']}');
+                      _addLog(LogType.info, 'Übersprungen: \${result['skipped']}');
+                      _addLog(LogType.info, 'Fehler: \${result['errors']}');
+                      
                       _loadDatabaseInfo();
-
+                      
                       if (mounted) {
                         Navigator.pop(context);
+                        
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              '${result['imported']} neue $spieltyp-Ziehungen importiert!',
+                              '\${result['imported']} neue \$spieltyp-Ziehungen importiert!',
                             ),
                             backgroundColor: Colors.green,
                           ),
                         );
                       }
                     } catch (e) {
-                      _addLog(LogType.error, 'Import-Fehler: $e');
+                      _addLog(LogType.error, 'Import-Fehler: \$e');
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Import fehlgeschlagen: $e'),
+                            content: Text('Import fehlgeschlagen: \$e'),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -443,6 +432,7 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
         color: Colors.black,
         child: Column(
           children: [
+            // Datenbank-Info Kacheln
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Wrap(
@@ -479,7 +469,8 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                 }).toList(),
               ),
             ),
-
+            
+            // Import-Controls
             Card(
               color: Colors.grey[900],
               margin: const EdgeInsets.all(8.0),
@@ -496,7 +487,8 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
+                    
+                    // Fortschrittsbalken
                     LinearProgressIndicator(
                       value: _importProgress,
                       backgroundColor: Colors.grey[800],
@@ -505,12 +497,13 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                       ),
                       minHeight: 20,
                     ),
-
+                    
                     const SizedBox(height: 12),
-
+                    
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        // Auto-Import Button
                         ElevatedButton.icon(
                           onPressed: _isImporting ? null : _triggerReimport,
                           icon: _isImporting
@@ -519,7 +512,7 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                               : const Icon(Icons.cloud_download),
                           label: Text(_isImporting
-                              ? 'IMPORTIERE (${(_importProgress * 100).toStringAsFixed(0)}%)'
+                              ? 'IMPORTIERE (\${(_importProgress * 100).toStringAsFixed(0)}%)'
                               : 'KOMPLETTEN IMPORT STARTEN'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.orange,
@@ -527,30 +520,10 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
                         ),
-
+                        
                         const SizedBox(width: 16),
-
-                        ElevatedButton(
-                          onPressed: _isUpdating ? null : _performAutoUpdate,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[800],
-                            foregroundColor: Colors.white,
-                          ),
-                          child: _isUpdating
-                              ? const SizedBox(
-                                  width: 20, height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Row(
-                                  children: [
-                                    Icon(Icons.update),
-                                    SizedBox(width: 8),
-                                    Text('AUTO UPDATE'),
-                                  ],
-                                ),
-                        ),
-
-                        const SizedBox(width: 16),
-
+                        
+                        // Lotto manuell importieren
                         ElevatedButton(
                           onPressed: () => _showManualImportDialog('lotto'),
                           style: ElevatedButton.styleFrom(
@@ -565,9 +538,10 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                             ],
                           ),
                         ),
-
+                        
                         const SizedBox(width: 16),
-
+                        
+                        // Eurojackpot manuell importieren
                         ElevatedButton(
                           onPressed: () => _showManualImportDialog('eurojackpot'),
                           style: ElevatedButton.styleFrom(
@@ -588,7 +562,8 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                 ),
               ),
             ),
-
+            
+            // Terminal-Log
             Expanded(
               child: Card(
                 color: Colors.black,
@@ -623,7 +598,7 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                             itemBuilder: (context, index) {
                               final log = _logs[_logs.length - 1 - index];
                               Color textColor;
-
+                              
                               switch (log.type) {
                                 case LogType.info:
                                   textColor = Colors.cyan;
@@ -640,7 +615,7 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                                 default:
                                   textColor = Colors.white;
                               }
-
+                              
                               return Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8.0,
@@ -670,3 +645,9 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
     );
   }
 }
+WORKING_CODE
+
+echo "✅ Funktionierende Version erstellt!"
+echo ""
+echo "🧪 Prüfe Syntax..."
+dart analyze lib/screens/database_status_screen.dart --no-pub 2>&1 | grep -E "error •" | head -10 || echo "✅ Keine Syntax-Fehler"
