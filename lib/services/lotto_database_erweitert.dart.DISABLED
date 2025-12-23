@@ -2,42 +2,13 @@ import 'lotto_database.dart';
 import '../models/lotto_data.dart';
 
 class ErweiterteLottoDatenbank {
-  static final LottoDatabase _db = LottoDatabase();
+  static final LottoDatabase _db = LottoDatabase.instance;
 
-  // ------------------------------------------------------------
-  // Prüfen ob Ziehung existiert (POSitional – wichtig!)
-  // ------------------------------------------------------------
-  static Future<bool> pruefeObSchonVorhanden(
-    String spieltyp,
-    DateTime datum,
-  ) async {
-    final res = await _db.rawQuery(
-      'SELECT 1 FROM ziehungen WHERE spieltyp = ? AND datum = ? LIMIT 1',
-      [spieltyp, datum.toIso8601String()],
-    );
-    return res.isNotEmpty;
-  }
-
-  // ------------------------------------------------------------
-  // Ziehung speichern
-  // ------------------------------------------------------------
-  static Future<void> fuegeZiehungWennNeu(LottoZiehung z) async {
-    final exists = await pruefeObSchonVorhanden(z.spieltyp, z.datum);
-    if (exists) return;
-
-    await _db.insert(
-      'ziehungen',
-      z.toMap(),
-    );
-  }
-
-  // ------------------------------------------------------------
-  // Alle Ziehungen eines Spieltyps (für Statistik)
-  // ------------------------------------------------------------
   static Future<List<LottoZiehung>> holeAlleZiehungen(
     String spieltyp,
   ) async {
-    final rows = await _db.query(
+    final database = await _db.database;
+    final rows = await database.query(
       'ziehungen',
       where: 'spieltyp = ?',
       whereArgs: [spieltyp],
@@ -47,29 +18,26 @@ class ErweiterteLottoDatenbank {
     return rows.map(LottoZiehung.fromMap).toList();
   }
 
-  // ------------------------------------------------------------
-  // Anzahl Ziehungen
-  // ------------------------------------------------------------
-  static Future<int> anzahlZiehungen(String spieltyp) async {
-    final res = await _db.rawQuery(
-      'SELECT COUNT(*) as c FROM ziehungen WHERE spieltyp = ?',
+  static Future<int> zaehleZiehungen(String spieltyp) async {
+    final database = await _db.database;
+    final result = await database.rawQuery(
+      'SELECT COUNT(*) as count FROM ziehungen WHERE spieltyp = ?',
       [spieltyp],
     );
-    return res.first['c'] as int;
+    return result.first['count'] as int;
   }
 
-  // ------------------------------------------------------------
-  // Letztes Ziehungsdatum
-  // ------------------------------------------------------------
-  static Future<DateTime?> holeLetztesZiehungsDatum(
-    String spieltyp,
-  ) async {
-    final res = await _db.rawQuery(
-      'SELECT datum FROM ziehungen WHERE spieltyp = ? ORDER BY datum DESC LIMIT 1',
-      [spieltyp],
-    );
+  static Future<Map<String, DateTime>> holeZeitraum(String spieltyp) async {
+    final database = await _db.database;
+    final result = await database.rawQuery('''
+      SELECT MIN(datum) as first, MAX(datum) as last 
+      FROM ziehungen WHERE spieltyp = ?
+    ''', [spieltyp]);
 
-    if (res.isEmpty) return null;
-    return DateTime.parse(res.first['datum'] as String);
+    final row = result.first;
+    return {
+      'first': DateTime.parse(row['first'] as String),
+      'last': DateTime.parse(row['last'] as String),
+    };
   }
 }

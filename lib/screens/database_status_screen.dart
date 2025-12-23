@@ -1,9 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lottogenerator_v4/services/lotto_database.dart';
-import 'package:lottogenerator_v4/services/auto_update_service.dart'; // NEUER IMPORT
+import 'package:lottogenerator_v4/services/auto_update_service.dart';
 
-enum LogType { info, warning, error, success }
+enum LogType { info, success, warning, error }
 
 class LogEntry {
   final DateTime timestamp;
@@ -14,19 +14,16 @@ class LogEntry {
 
   @override
   String toString() {
-    final timeStr = '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}:${timestamp.second.toString().padLeft(2, '0')}';
-    
+    final time = '[${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}:${timestamp.second.toString().padLeft(2, '0')}]';
     switch (type) {
       case LogType.info:
-        return '[$timeStr] ℹ️  $message';
-      case LogType.warning:
-        return '[$timeStr] ⚠️  $message';
-      case LogType.error:
-        return '[$timeStr] ❌ $message';
+        return '$time ℹ️ $message';
       case LogType.success:
-        return '[$timeStr] ✅ $message';
-      default:
-        return '[$timeStr] $message';
+        return '$time ✅ $message';
+      case LogType.warning:
+        return '$time ⚠️ $message';
+      case LogType.error:
+        return '$time ❌ $message';
     }
   }
 }
@@ -39,11 +36,11 @@ class DatabaseStatusScreen extends StatefulWidget {
 }
 
 class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
-  final LottoDatabase _db = LottoDatabase.instance;
-  final AutoUpdateService _updateService = AutoUpdateService(); // NEUE INSTANZ
+  final LottoDatabase _db = LottoDatabase();
+  final AutoUpdateService _updateService = AutoUpdateService();
   final List<LogEntry> _logs = [];
   bool _isImporting = false;
-  bool _isUpdating = false; // NEUE VARIABLE
+  bool _isUpdating = false;
   double _importProgress = 0.0;
   bool _isLoading = false;
   final ScrollController _scrollController = ScrollController();
@@ -132,9 +129,7 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
           'Gesamt': '${lottoNum + ejNum} Einträge insgesamt'
         };
       });
-
-      _addLog(LogType.success, 'Datenbank-Statistik geladen: $lottoNum Lotto, $ejNum Eurojackpot');
-
+      _addLog(LogType.success, 'Datenbank-Info aktualisiert');
     } catch (e) {
       _addLog(LogType.error, 'Fehler beim Laden der Datenbank-Info: $e');
       setState(() {
@@ -160,11 +155,11 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
       }
       return dateStr;
     } catch (e) {
-      return dateStr;
+      return 'Formatfehler';
     }
   }
 
-  Future<void> _triggerReimport() async {
+  Future<void> _performFullImport() async {
     if (_isImporting) return;
 
     setState(() {
@@ -179,104 +174,60 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
 
       _updateProgress(0.1, 'Lösche alte Daten...');
       await database.delete('ziehungen');
-      _addLog(LogType.success, '✅ Alte Daten gelöscht');
 
       _updateProgress(0.2, 'Importiere Lotto 6aus49...');
-      _addLog(LogType.info, '📥 Lese Lotto-Daten...');
-
-      try {
-        final content = await rootBundle.loadString('assets/data/lotto_1955_2025.txt');
-        final lines = content.split('\n');
-        int imported = 0;
-        int total = lines.length;
-
-        for (final line in lines) {
-          if (line.trim().isEmpty) continue;
-          final parts = line.split('|');
-          if (parts.length != 3) continue;
-
-          final datum = parts[0].trim();
-          final zahlen = parts[1].trim();
-          final superzahl = int.tryParse(parts[2].trim()) ?? 0;
-
-          final datumParts = datum.split('.');
-          if (datumParts.length == 3) {
-            final dbDatum = '${datumParts[0]}-${datumParts[1]}-${datumParts[2]}';
-            
-            await database.insert('ziehungen', {
-              'spieltyp': 'lotto_6aus49',
-              'datum': dbDatum,
-              'zahlen': zahlen,
-              'superzahl': superzahl
-            });
-
-            imported++;
-          }
-
-          if (imported % 100 == 0) {
-            final progress = 0.2 + (0.4 * imported / total);
-            _updateProgress(progress, 'Lotto: $imported/$total');
-          }
+      final lottoText = await DefaultAssetBundle.of(context)
+          .loadString('assets/data/lotto_1955_2025.txt');
+      final lottoLines = const LineSplitter().convert(lottoText);
+      int lottoImported = 0;
+      
+      for (int i = 0; i < lottoLines.length; i++) {
+        final line = lottoLines[i].trim();
+        if (line.isEmpty || line.startsWith('#')) continue;
+        
+        try {
+          await _db.importLotto6aus49Line(line);
+          lottoImported++;
+        } catch (e) {
+          _addLog(LogType.error, 'Fehler in Zeile ${i + 1}: $e');
         }
-
-        _addLog(LogType.success, '✅ $imported Lotto-Ziehungen importiert');
-        _updateProgress(0.6, 'Lotto-Import abgeschlossen');
-
-      } catch (e) {
-        _addLog(LogType.error, '❌ Lotto-Import Fehler: $e');
+        
+        if (i % 100 == 0) {
+          _updateProgress(0.2 + 0.5 * (i / lottoLines.length), 
+                         'Lotto: $lottoImported/$lottoLines');
+        }
       }
 
-      _updateProgress(0.65, 'Importiere Eurojackpot...');
-      _addLog(LogType.info, '📥 Lese Eurojackpot-Daten...');
-
-      try {
-        final content = await rootBundle.loadString('assets/data/eurojackpot_2012_2025.txt');
-        final lines = content.split('\n');
-        int imported = 0;
-        int total = lines.length;
-
-        for (final line in lines) {
-          if (line.trim().isEmpty) continue;
-          final parts = line.split('|');
-          if (parts.length != 3) continue;
-
-          final datum = parts[0].trim();
-          final hauptzahlen = parts[1].trim();
-          final eurozahlen = parts[2].trim();
-          final zahlen = '$hauptzahlen $eurozahlen';
-
-          await database.insert('ziehungen', {
-            'spieltyp': 'eurojackpot',
-            'datum': datum,
-            'zahlen': zahlen,
-            'superzahl': 0
-          });
-
-          imported++;
-
-          if (imported % 50 == 0) {
-            final progress = 0.65 + (0.3 * imported / total);
-            _updateProgress(progress, 'Eurojackpot: $imported/$total');
-          }
+      _updateProgress(0.7, 'Importiere Eurojackpot...');
+      final ejText = await DefaultAssetBundle.of(context)
+          .loadString('assets/data/eurojackpot_2012_2025.txt');
+      final ejLines = const LineSplitter().convert(ejText);
+      int ejImported = 0;
+      
+      for (int i = 0; i < ejLines.length; i++) {
+        final line = ejLines[i].trim();
+        if (line.isEmpty || line.startsWith('#')) continue;
+        
+        try {
+          await _db.importEurojackpotLine(line);
+          ejImported++;
+        } catch (e) {
+          _addLog(LogType.error, 'Fehler in Zeile ${i + 1}: $e');
         }
-
-        _addLog(LogType.success, '✅ $imported Eurojackpot-Ziehungen importiert');
-        _updateProgress(0.95, 'Eurojackpot-Import abgeschlossen');
-
-      } catch (e) {
-        _addLog(LogType.error, '❌ Eurojackpot-Import Fehler: $e');
+        
+        if (i % 50 == 0) {
+          _updateProgress(0.7 + 0.3 * (i / ejLines.length), 
+                         'Eurojackpot: $ejImported/$ejLines');
+        }
       }
 
-      await Future.delayed(const Duration(milliseconds: 500));
-      _updateProgress(1.0, 'Import komplett abgeschlossen');
-
-      _addLog(LogType.success, '🎉 DATENBANK NEU GELADEN: Lotto + Eurojackpot');
-      _addLog(LogType.info, 'ℹ️  Statistik wird aktualisiert...');
-
+      _updateProgress(1.0, 'Import abgeschlossen!');
+      _addLog(LogType.success, '✅ IMPORT ERFOLGREICH: $lottoImported Lotto + $ejImported Eurojackpot Einträge');
+      
       await _loadDatabaseInfo();
-
+      
     } catch (e) {
-      _addLog(LogType.error, '❌ IMPORT FEHLGESCHLAGEN: $e');
+      _addLog(LogType.error, '❌ FEHLER beim Import: $e');
     } finally {
       if (mounted) {
         setState(() => _isImporting = false);
@@ -284,7 +235,6 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
     }
   }
 
-  // NEUE METHODE: Automatisches Update
   Future<void> _performAutoUpdate() async {
     if (_isUpdating || _isImporting) return;
 
@@ -293,26 +243,21 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
 
     try {
       final result = await _updateService.updateCurrentYear();
-      
+
       final imported = result['imported'] ?? 0;
       final errors = result['errors'] ?? 0;
-      final totalLines = result['total_lines'] ?? 0;
 
       if (errors == 0 && imported > 0) {
-        _addLog(LogType.success, '✅ Update erfolgreich: $imported neue Ziehungen');
-        _addLog(LogType.info, '📊 Gefunden: $totalLines Zeilen, Importiert: $imported');
-      } else if (imported == 0 && totalLines > 0) {
-        _addLog(LogType.warning, '⚠️  Keine neuen Daten: Alle $totalLines Zeilen bereits vorhanden');
-      } else if (errors > 0) {
-        _addLog(LogType.error, '❌ Update mit Fehlern: $errors Fehler, $imported importiert');
+        _addLog(LogType.success, '✅ UPDATE ERFOLGREICH: $imported neue Ziehungen importiert');
+      } else if (imported == 0) {
+        _addLog(LogType.info, 'ℹ️ Keine neuen Ziehungen gefunden');
       } else {
-        _addLog(LogType.info, 'ℹ️  Update abgeschlossen: $imported importiert, $errors Fehler');
+        _addLog(LogType.warning, '⚠️ Update mit $errors Fehlern abgeschlossen');
       }
 
       await _loadDatabaseInfo();
-
     } catch (e) {
-      _addLog(LogType.error, '❌ Update-Fehler: $e');
+      _addLog(LogType.error, '❌ FEHLER beim Update: $e');
     } finally {
       if (mounted) {
         setState(() => _isUpdating = false);
@@ -339,22 +284,16 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                   TextField(
                     controller: controller,
                     maxLines: 10,
-                    minLines: 5,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      hintText: '101.01.2025Mi37151826332\n204.01.2025Sa26243036452\n...',
+                      hintText: '101.01.2025Mi37151826332\n102.01.2025Do4152930382\n...',
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  if (isImporting)
-                    const CircularProgressIndicator(),
                 ],
               ),
               actions: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                  onPressed: () => Navigator.pop(context),
                   child: const Text('Abbrechen'),
                 ),
                 ElevatedButton(
@@ -373,34 +312,21 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
                         result = await _db.importEurojackpotManually(text);
                       }
 
-                      _addLog(LogType.success, 'Manueller Import abgeschlossen!');
-                      _addLog(LogType.info, 'Importiert: ${result['imported']}');
-                      _addLog(LogType.info, 'Übersprungen: ${result['skipped']}');
-                      _addLog(LogType.info, 'Fehler: ${result['errors']}');
+                      final imported = result['imported'] ?? 0;
+                      final errors = result['errors'] ?? 0;
 
-                      _loadDatabaseInfo();
-
-                      if (mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              '${result['imported']} neue $spieltyp-Ziehungen importiert!',
-                            ),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
+                      if (errors == 0 && imported > 0) {
+                        _addLog(LogType.success, '✅ Manueller $spieltyp Import: $imported neue Einträge');
+                        await _loadDatabaseInfo();
+                      } else if (imported == 0) {
+                        _addLog(LogType.info, 'ℹ️ Keine neuen $spieltyp Einträge');
+                      } else {
+                        _addLog(LogType.warning, '⚠️ $spieltyp Import mit $errors Fehlern');
                       }
+
+                      Navigator.pop(context);
                     } catch (e) {
-                      _addLog(LogType.error, 'Import-Fehler: $e');
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Import fehlgeschlagen: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
+                      _addLog(LogType.error, '❌ FEHLER beim manuellen Import: $e');
                     } finally {
                       if (mounted) {
                         setState(() => isImporting = false);
@@ -422,12 +348,11 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Datenbank Status & Import'),
-        backgroundColor: Colors.blueGrey[900],
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: _isLoading ? Colors.grey : Colors.white),
+            icon: const Icon(Icons.refresh),
             onPressed: _isLoading ? null : _loadDatabaseInfo,
-            tooltip: 'Statistik aktualisieren',
+            tooltip: 'Datenbank-Info aktualisieren',
           ),
           IconButton(
             icon: const Icon(Icons.delete),
@@ -443,225 +368,163 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
         color: Colors.black,
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Wrap(
-                spacing: 8.0,
-                runSpacing: 8.0,
-                children: _databaseInfo.entries.map((entry) {
-                  return Card(
-                    color: Colors.grey[900],
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            entry.key,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+            Expanded(
+              flex: 1,
+              child: Container(
+                color: Colors.grey[900],
+                padding: const EdgeInsets.all(16),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : GridView.count(
+                        crossAxisCount: 3,
+                        childAspectRatio: 1.5,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        children: _databaseInfo.entries.map((entry) {
+                          return Card(
+                            color: Colors.grey[800],
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    entry.key,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    entry.value,
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            entry.value,
-                            style: TextStyle(
-                              color: Colors.green[300],
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
+                          );
+                        }).toList(),
                       ),
-                    ),
-                  );
-                }).toList(),
               ),
             ),
-
-            Card(
-              color: Colors.grey[900],
-              margin: const EdgeInsets.all(8.0),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+            const SizedBox(height: 2),
+            Container(
+              height: 4,
+              color: Colors.grey[800],
+              child: _isImporting
+                  ? LinearProgressIndicator(
+                      value: _importProgress,
+                      backgroundColor: Colors.grey[700],
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.greenAccent,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(height: 2),
+            Expanded(
+              flex: 2,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  border: Border.all(color: Colors.greenAccent, width: 1),
+                ),
+                padding: const EdgeInsets.all(8),
                 child: Column(
                   children: [
                     const Text(
-                      'Datenbank Import',
+                      'TERMINAL LOGS',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
+                        color: Colors.greenAccent,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 12),
-
-                    LinearProgressIndicator(
-                      value: _importProgress,
-                      backgroundColor: Colors.grey[800],
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        _importProgress >= 1.0 ? Colors.green : Colors.blue,
+                    const Divider(color: Colors.greenAccent, height: 16),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        itemCount: _logs.length,
+                        itemBuilder: (context, index) {
+                          final log = _logs[index];
+                          Color color;
+                          switch (log.type) {
+                            case LogType.info:
+                              color = Colors.white70;
+                              break;
+                            case LogType.success:
+                              color = Colors.greenAccent;
+                              break;
+                            case LogType.warning:
+                              color = Colors.amber;
+                              break;
+                            case LogType.error:
+                              color = Colors.redAccent;
+                              break;
+                          }
+                          return Text(
+                            log.toString(),
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 12,
+                              fontFamily: 'Monospace',
+                            ),
+                          );
+                        },
                       ),
-                      minHeight: 20,
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: _isImporting ? null : _triggerReimport,
-                          icon: _isImporting
-                              ? const SizedBox(
-                                  width: 20, height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Icon(Icons.cloud_download),
-                          label: Text(_isImporting
-                              ? 'IMPORTIERE (${(_importProgress * 100).toStringAsFixed(0)}%)'
-                              : 'KOMPLETTEN IMPORT STARTEN'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                        ),
-
-                        const SizedBox(width: 16),
-
-                        ElevatedButton(
-                          onPressed: _isUpdating ? null : _performAutoUpdate,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[800],
-                            foregroundColor: Colors.white,
-                          ),
-                          child: _isUpdating
-                              ? const SizedBox(
-                                  width: 20, height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Row(
-                                  children: [
-                                    Icon(Icons.update),
-                                    SizedBox(width: 8),
-                                    Text('AUTO UPDATE'),
-                                  ],
-                                ),
-                        ),
-
-                        const SizedBox(width: 16),
-
-                        ElevatedButton(
-                          onPressed: () => _showManualImportDialog('lotto'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green[800],
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.numbers),
-                              SizedBox(width: 8),
-                              Text('LOTTO IMPORT'),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(width: 16),
-
-                        ElevatedButton(
-                          onPressed: () => _showManualImportDialog('eurojackpot'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange[800],
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.euro),
-                              SizedBox(width: 8),
-                              Text('EJ IMPORT'),
-                            ],
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
               ),
             ),
-
-            Expanded(
-              child: Card(
-                color: Colors.black,
-                margin: const EdgeInsets.all(8.0),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 8.0),
-                        child: Row(
-                          children: [
-                            Icon(Icons.terminal, size: 16, color: Colors.green),
-                            SizedBox(width: 8),
-                            Text('SYSTEM-LOG', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            Spacer(),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black,
-                            border: Border.all(color: Colors.green, width: 1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: ListView.builder(
-                            controller: _scrollController,
-                            reverse: true,
-                            itemCount: _logs.length,
-                            itemBuilder: (context, index) {
-                              final log = _logs[_logs.length - 1 - index];
-                              Color textColor;
-
-                              switch (log.type) {
-                                case LogType.info:
-                                  textColor = Colors.cyan;
-                                  break;
-                                case LogType.warning:
-                                  textColor = Colors.yellow;
-                                  break;
-                                case LogType.error:
-                                  textColor = Colors.red;
-                                  break;
-                                case LogType.success:
-                                  textColor = Colors.green;
-                                  break;
-                                default:
-                                  textColor = Colors.white;
-                              }
-
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0,
-                                  vertical: 2.0,
-                                ),
-                                child: Text(
-                                  log.toString(),
-                                  style: TextStyle(
-                                    color: textColor,
-                                    fontFamily: 'Monospace',
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
+            Container(
+              color: Colors.grey[900],
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.download),
+                    label: const Text('VOLL-IMPORT'),
+                    onPressed: _isImporting ? null : _performFullImport,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
-                ),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.update),
+                    label: const Text('AUTO-UPDATE'),
+                    onPressed: _isUpdating ? null : _performAutoUpdate,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.input),
+                    label: const Text('MAN. LOTTO'),
+                    onPressed: _isImporting ? null : () => _showManualImportDialog('lotto'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.input),
+                    label: const Text('MAN. EJ'),
+                    onPressed: _isImporting ? null : () => _showManualImportDialog('eurojackpot'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

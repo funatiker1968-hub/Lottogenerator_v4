@@ -1,11 +1,6 @@
+include: package:flutter_lints/flutter.yaml
+
 analyzer:
   exclude:
-    - "lib/archive_old_screens/**"
-    - "**/*.g.dart"
-    - "**/*.freezed.dart"
-
-linter:
-  rules:
-    # Hier können wir Regeln deaktivieren, aber erstmal nur excluden
-    - avoid_print
-    - prefer_const_constructors
+    - _disabled_tests/**
+    - lib/archive_old_screens/**
