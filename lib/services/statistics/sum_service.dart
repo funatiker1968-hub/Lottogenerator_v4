@@ -1,59 +1,51 @@
-import '../../models/lotto_data.dart';
-import '../lotto_database_erweitert.dart';
-import 'statistics_models.dart';
+import 'package:lottogenerator_v4/services/lotto_database.dart';
 
 class SumService {
-  Future<SumStats> sumStats({
-    required String spieltyp,
-    required int takeNumbersPerDraw,
-    int euroOffset = 0,
-  }) async {
-    final draws = await ErweiterteLottoDatenbank.holeAlleZiehungen(spieltyp);
-    final sorted = List<LottoZiehung>.from(draws)..sort((a, b) => a.datum.compareTo(b.datum));
+  final LottoDatabase db = LottoDatabase();
 
-    if (sorted.isEmpty) {
-      return const SumStats(spieltyp: 'none', countDraws: 0, minSum: 0, maxSum: 0, avgSum: 0);
+  Future<SumStats> sumStats({required String spieltyp}) async {
+    final database = await db.database;
+    final draws = await database.query(
+      'ziehungen',
+      where: 'spieltyp = ?',
+      whereArgs: [spieltyp],
+      orderBy: 'datum DESC',
+    );
+
+    if (draws.isEmpty) {
+      return SumStats(
+        spieltyp: spieltyp,
+        draws: 0,
+        minSum: 0,
+        maxSum: 0,
+        avgSum: 0,
+        histogram: {},
+      );
     }
 
-    int minSum = 1 << 30;
+    int minSum = 999;
     int maxSum = 0;
-    int sumAll = 0;
-    int count = 0;
+    int totalSum = 0;
+    final histogram = <int, int>{};
 
-    for (final z in sorted) {
-      final nums = _extract(z, takeNumbersPerDraw: takeNumbersPerDraw, euroOffset: euroOffset);
-      if (nums.isEmpty) continue;
-      final s = nums.fold<int>(0, (p, e) => p + e);
-      minSum = s < minSum ? s : minSum;
-      maxSum = s > maxSum ? s : maxSum;
-      sumAll += s;
-      count++;
+    for (final draw in draws) {
+      final numbersStr = draw['zahlen'] as String;
+      final numbers = numbersStr.split(' ').map(int.parse).toList();
+      final sum = numbers.reduce((a, b) => a + b);
+      
+      if (sum < minSum) minSum = sum;
+      if (sum > maxSum) maxSum = sum;
+      totalSum += sum;
+      histogram[sum] = (histogram[sum] ?? 0) + 1;
     }
 
     return SumStats(
       spieltyp: spieltyp,
-      countDraws: count,
-      minSum: minSum == (1 << 30) ? 0 : minSum,
+      draws: draws.length,
+      minSum: minSum,
       maxSum: maxSum,
-      avgSum: count == 0 ? 0 : (sumAll / count),
+      avgSum: totalSum / draws.length,
+      histogram: histogram,
     );
-  }
-
-  Map<int, int> sumHistogram({
-    required List<List<int>> drawsNumbers,
-    int bucketSize = 10,
-  }) {
-    final hist = <int, int>{}; // bucketStart -> count
-    for (final nums in drawsNumbers) {
-      final s = nums.fold<int>(0, (p, e) => p + e);
-      final b = (s ~/ bucketSize) * bucketSize;
-      hist[b] = (hist[b] ?? 0) + 1;
-    }
-    return hist;
-  }
-
-  List<int> _extract(LottoZiehung z, {required int takeNumbersPerDraw, required int euroOffset}) {
-    if (z.zahlen.length < euroOffset + takeNumbersPerDraw) return const [];
-    return z.zahlen.sublist(euroOffset, euroOffset + takeNumbersPerDraw);
   }
 }

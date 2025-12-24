@@ -1,5 +1,5 @@
 import '../../models/lotto_data.dart';
-import '../lotto_database_erweitert.dart';
+import '../lotto_database.dart';
 import 'statistics_models.dart';
 
 class GapService {
@@ -10,7 +10,7 @@ class GapService {
     required int takeNumbersPerDraw,
     int euroOffset = 0,
   }) async {
-    final draws = await ErweiterteLottoDatenbank.holeAlleZiehungen(spieltyp);
+    final draws = await LottoDatabase.holeAlleZiehungen(spieltyp);
     final sorted = List<LottoZiehung>.from(draws)..sort((a, b) => a.datum.compareTo(b.datum));
 
     // positions per draw: 0..len-1

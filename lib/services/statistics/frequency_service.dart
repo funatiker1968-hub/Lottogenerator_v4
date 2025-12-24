@@ -1,5 +1,5 @@
 import '../../models/lotto_data.dart';
-import '../lotto_database_erweitert.dart';
+import '../lotto_database.dart';
 import 'statistics_models.dart';
 
 class FrequencyService {
@@ -12,7 +12,7 @@ class FrequencyService {
     int skipFromEnd = 0, // optional: z.B. "letzte Ziehung ausklammern"
     int euroOffset = 0, // ej-euro: offset=5
   }) async {
-    final draws = await ErweiterteLottoDatenbank.holeAlleZiehungen(spieltyp);
+    final draws = await LottoDatabase.holeAlleZiehungen(spieltyp);
     if (draws.isEmpty) {
       return FrequencyResult(
         spieltyp: spieltyp,

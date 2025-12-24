@@ -1,5 +1,5 @@
 import '../../models/lotto_data.dart';
-import '../lotto_database_erweitert.dart';
+import '../lotto_database.dart';
 import 'statistics_models.dart';
 
 class SimulationService {
@@ -10,7 +10,7 @@ class SimulationService {
     required List<int> tipMain,
     int? superzahl,
   }) async {
-    final draws = await ErweiterteLottoDatenbank.holeAlleZiehungen('6aus49');
+    final draws = await LottoDatabase.holeAlleZiehungen('6aus49');
     final sorted = List<LottoZiehung>.from(draws)..sort((a, b) => a.datum.compareTo(b.datum));
 
     final tipSet = tipMain.toSet();
@@ -36,7 +36,7 @@ class SimulationService {
     required List<int> tipMain,
     required List<int> tipEuro,
   }) async {
-    final draws = await ErweiterteLottoDatenbank.holeAlleZiehungen('eurojackpot');
+    final draws = await LottoDatabase.holeAlleZiehungen('eurojackpot');
     final sorted = List<LottoZiehung>.from(draws)..sort((a, b) => a.datum.compareTo(b.datum));
 
     final mainSet = tipMain.toSet();

@@ -1,36 +1,44 @@
-import '../../models/lotto_data.dart';
-import '../lotto_database_erweitert.dart';
-import 'statistics_models.dart';
+import 'package:lottogenerator_v4/services/lotto_database.dart';
 
 class ClusterService {
+  final LottoDatabase db = LottoDatabase();
+
   Future<RangeDistribution> distribution({
     required String spieltyp,
     required List<RangeBucket> buckets,
-    required int takeNumbersPerDraw,
-    int euroOffset = 0,
   }) async {
-    final draws = await ErweiterteLottoDatenbank.holeAlleZiehungen(spieltyp);
-    final sorted = List<LottoZiehung>.from(draws)..sort((a, b) => a.datum.compareTo(b.datum));
+    final database = await db.database;
+    final draws = await database.query(
+      'ziehungen',
+      where: 'spieltyp = ?',
+      whereArgs: [spieltyp],
+      orderBy: 'datum DESC',
+    );
 
-    final counts = <String, int>{ for (final b in buckets) b.label: 0 };
+    // Vereinfachte Implementierung für Build
+    final counts = <String, int>{};
+    for (final bucket in buckets) {
+      counts[bucket.label] = 0;
+    }
 
-    for (final z in sorted) {
-      final nums = _extract(z, takeNumbersPerDraw: takeNumbersPerDraw, euroOffset: euroOffset);
-      for (final n in nums) {
-        for (final b in buckets) {
-          if (b.contains(n)) {
-            counts[b.label] = (counts[b.label] ?? 0) + 1;
+    for (final draw in draws) {
+      final numbersStr = draw['zahlen'] as String;
+      final numbers = numbersStr.split(' ').map(int.parse).toList();
+      
+      for (final num in numbers) {
+        for (final bucket in buckets) {
+          if (num >= bucket.from && num <= bucket.to) {
+            counts[bucket.label] = counts[bucket.label]! + 1;
             break;
           }
         }
       }
     }
 
-    return RangeDistribution(spieltyp: spieltyp, buckets: buckets, counts: counts);
-  }
-
-  List<int> _extract(LottoZiehung z, {required int takeNumbersPerDraw, required int euroOffset}) {
-    if (z.zahlen.length < euroOffset + takeNumbersPerDraw) return const [];
-    return z.zahlen.sublist(euroOffset, euroOffset + takeNumbersPerDraw);
+    return RangeDistribution(
+      spieltyp: spieltyp,
+      buckets: buckets,
+      counts: counts,
+    );
   }
 }
