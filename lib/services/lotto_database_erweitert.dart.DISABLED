@@ -1,9 +1,0 @@
-// DEAKTIVIERTE DATEI - Singleton-Referenz korrigiert
-// Dieser Fehler wird behoben, indem der Zugriff auf .instance entfernt wird,
-// da die Hauptdatei lotto_database.dart jetzt das korrekte Singleton-Pattern verwendet.
-
-// Ursprüngliche fehlerhafte Zeile (kommentiert):
-// static final LottoDatabase _db = LottoDatabase.instance;
-
-// Korrektur: Diese Datei wird nicht aktiv im Projekt verwendet.
-// Die funktionale Singleton-Instanz ist in lotto_database.dart definiert.
