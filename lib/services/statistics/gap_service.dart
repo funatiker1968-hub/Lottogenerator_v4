@@ -1,71 +1,42 @@
-import '../../models/lotto_data.dart';
-import '../lotto_database.dart';
+import 'package:lottogenerator_v4/services/lotto_database.dart';
 import 'statistics_models.dart';
 
 class GapService {
+  final LottoDatabase db = LottoDatabase();
+
   Future<List<GapStats>> gaps({
     required String spieltyp,
-    required int minNumber,
-    required int maxNumber,
-    required int takeNumbersPerDraw,
+    int minNumber = 1,
+    int maxNumber = 49,
+    int takeNumbersPerDraw = 6,
     int euroOffset = 0,
   }) async {
-    final draws = await LottoDatabase.holeAlleZiehungen(spieltyp);
-    final sorted = List<LottoZiehung>.from(draws)..sort((a, b) => a.datum.compareTo(b.datum));
+    final database = await db.database;
+    final draws = await database.query(
+      'ziehungen',
+      where: 'spieltyp = ?',
+      whereArgs: [spieltyp],
+      orderBy: 'datum DESC',
+    );
 
-    // positions per draw: 0..len-1
-    final lastSeen = <int, int>{}; // number -> drawIndex
-    final gaps = <int, List<int>>{}; // number -> list of gaps
-    final occurrences = <int, int>{};
-
-    for (int i = 0; i < sorted.length; i++) {
-      final nums = _extract(sorted[i], takeNumbersPerDraw: takeNumbersPerDraw, euroOffset: euroOffset);
-      for (final n in nums) {
-        occurrences[n] = (occurrences[n] ?? 0) + 1;
-        final prev = lastSeen[n];
-        if (prev != null) {
-          final gap = i - prev;
-          (gaps[n] ??= <int>[]).add(gap);
-        }
-        lastSeen[n] = i;
+    final gapCounts = <int, int>{};
+    
+    for (final draw in draws) {
+      final numbersStr = draw['zahlen'] as String;
+      final numbers = numbersStr.split(' ').map(int.parse).toList()..sort();
+      
+      // Berücksichtige nur bestimmte Zahlen
+      final relevantNumbers = takeNumbersPerDraw > 0 && numbers.length > euroOffset
+          ? numbers.sublist(euroOffset, euroOffset + takeNumbersPerDraw)
+          : numbers;
+          
+      // Berechne Abstände zwischen aufeinanderfolgenden Zahlen
+      for (int i = 1; i < relevantNumbers.length; i++) {
+        final gap = relevantNumbers[i] - relevantNumbers[i - 1];
+        gapCounts[gap] = (gapCounts[gap] ?? 0) + 1;
       }
     }
 
-    final res = <GapStats>[];
-    for (int n = minNumber; n <= maxNumber; n++) {
-      final list = gaps[n] ?? const <int>[];
-      final occ = occurrences[n] ?? 0;
-
-      int? minGap;
-      int? maxGap;
-      double? avgGap;
-
-      if (list.isNotEmpty) {
-        minGap = list.reduce((a, b) => a < b ? a : b);
-        maxGap = list.reduce((a, b) => a > b ? a : b);
-        final sum = list.fold<int>(0, (p, e) => p + e);
-        avgGap = sum / list.length;
-      }
-
-      final currentGap = (lastSeen[n] == null) ? sorted.length : (sorted.length - 1 - lastSeen[n]!);
-
-      res.add(GapStats(
-        number: n,
-        occurrences: occ,
-        minGap: minGap,
-        maxGap: maxGap,
-        avgGap: avgGap,
-        currentGap: currentGap,
-      ));
-    }
-
-    // sort: most "overdue" first
-    res.sort((a, b) => b.currentGap.compareTo(a.currentGap));
-    return res;
-  }
-
-  List<int> _extract(LottoZiehung z, {required int takeNumbersPerDraw, required int euroOffset}) {
-    if (z.zahlen.length < euroOffset + takeNumbersPerDraw) return const [];
-    return z.zahlen.sublist(euroOffset, euroOffset + takeNumbersPerDraw);
+    return gapCounts.entries.map((e) => GapStats(gap: e.key, count: e.value)).toList();
   }
 }

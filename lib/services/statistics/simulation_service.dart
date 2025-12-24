@@ -1,61 +1,61 @@
-import '../../models/lotto_data.dart';
-import '../lotto_database.dart';
+import 'package:lottogenerator_v4/services/lotto_database.dart';
 import 'statistics_models.dart';
 
 class SimulationService {
-  /// Lotto 6aus49:
-  /// tipMain = 6 Zahlen
-  /// tipExtra = Superzahl (0..9) optional (null = ignorieren)
-  Future<SimulationSummary> simulateLotto6aus49({
-    required List<int> tipMain,
-    int? superzahl,
+  final LottoDatabase db = LottoDatabase();
+
+  Future<SimulationSummary> simulate({
+    required String spieltyp,
+    required List<int> tip,
+    int simulations = 10000,
   }) async {
-    final draws = await LottoDatabase.holeAlleZiehungen('6aus49');
-    final sorted = List<LottoZiehung>.from(draws)..sort((a, b) => a.datum.compareTo(b.datum));
+    final database = await db.database;
+    final draws = await database.query(
+      'ziehungen',
+      where: 'spieltyp = ?',
+      whereArgs: [spieltyp],
+      orderBy: 'datum DESC',
+      limit: 100, // Nur letzte 100 für Simulation
+    );
 
-    final tipSet = tipMain.toSet();
-    final hist = <String, int>{};
-
-    for (final z in sorted) {
-      final hitsMain = z.zahlen.where(tipSet.contains).length;
-      final hitsSz = (superzahl == null) ? 0 : ((z.superzahl == superzahl) ? 1 : 0);
-
-      final key = superzahl == null
-          ? '$hitsMain'
-          : (hitsSz == 1 ? '$hitsMain+SZ' : '$hitsMain');
-
-      hist[key] = (hist[key] ?? 0) + 1;
+    // Vereinfachte Simulation
+    final matchesHistogram = <int, int>{};
+    for (int i = 0; i <= tip.length; i++) {
+      matchesHistogram[i] = 0;
     }
 
-    return SimulationSummary(spieltyp: '6aus49', draws: sorted.length, histogram: hist);
-  }
-
-  /// Eurojackpot:
-  /// tipMain=5 (1..50), tipEuro=2 (1..12)
-  Future<SimulationSummary> simulateEurojackpot({
-    required List<int> tipMain,
-    required List<int> tipEuro,
-  }) async {
-    final draws = await LottoDatabase.holeAlleZiehungen('eurojackpot');
-    final sorted = List<LottoZiehung>.from(draws)..sort((a, b) => a.datum.compareTo(b.datum));
-
-    final mainSet = tipMain.toSet();
-    final euroSet = tipEuro.toSet();
-
-    final hist = <String, int>{};
-
-    for (final z in sorted) {
-      if (z.zahlen.length < 7) continue;
-      final drawMain = z.zahlen.sublist(0, 5);
-      final drawEuro = z.zahlen.sublist(5, 7);
-
-      final hitsMain = drawMain.where(mainSet.contains).length;
-      final hitsEuro = drawEuro.where(euroSet.contains).length;
-
-      final key = '$hitsMain+$hitsEuro';
-      hist[key] = (hist[key] ?? 0) + 1;
+    for (final draw in draws) {
+      final numbersStr = draw['zahlen'] as String;
+      final drawnNumbers = numbersStr.split(' ').map(int.parse).toSet();
+      final tipNumbers = tip.toSet();
+      
+      final matches = drawnNumbers.intersection(tipNumbers).length;
+      matchesHistogram[matches] = matchesHistogram[matches]! + 1;
     }
 
-    return SimulationSummary(spieltyp: 'eurojackpot', draws: sorted.length, histogram: hist);
+    final sorted = draws.length > 0 
+        ? Map.fromEntries(
+            matchesHistogram.entries.toList()..sort((a, b) => b.key.compareTo(a.key))
+          )
+        : matchesHistogram;
+
+    return SimulationSummary(
+      spieltyp: spieltyp,
+      draws: draws.length,
+      histogram: sorted,
+    );
   }
+}
+
+// SimulationSummary Modell (falls nicht vorhanden)
+class SimulationSummary {
+  final String spieltyp;
+  final int draws;
+  final Map<int, int> histogram;
+
+  SimulationSummary({
+    required this.spieltyp,
+    required this.draws,
+    required this.histogram,
+  });
 }

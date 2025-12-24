@@ -1,36 +1,45 @@
-import '../../models/lotto_data.dart';
-import '../lotto_database.dart';
+import 'package:lottogenerator_v4/services/lotto_database.dart';
 import 'statistics_models.dart';
 
 class PairService {
-  Future<PairResult> pairs({
-    required String spieltyp,
-    required int takeNumbersPerDraw,
-    int euroOffset = 0,
-  }) async {
-    final draws = await LottoDatabase.holeAlleZiehungen(spieltyp);
-    final sorted = List<LottoZiehung>.from(draws)..sort((a, b) => a.datum.compareTo(b.datum));
+  final LottoDatabase db = LottoDatabase();
 
-    final counts = <PairKey, int>{};
+  Future<PairResult> pairs({required String spieltyp}) async {
+    final database = await db.database;
+    final draws = await database.query(
+      'ziehungen',
+      where: 'spieltyp = ?',
+      whereArgs: [spieltyp],
+      orderBy: 'datum DESC',
+    );
 
-    for (final z in sorted) {
-      final nums = _extract(z, takeNumbersPerDraw: takeNumbersPerDraw, euroOffset: euroOffset);
-      if (nums.length < 2) continue;
-      final sortedNums = List<int>.from(nums)..sort();
-
-      for (int i = 0; i < sortedNums.length; i++) {
-        for (int j = i + 1; j < sortedNums.length; j++) {
-          final key = PairKey(sortedNums[i], sortedNums[j]);
-          counts[key] = (counts[key] ?? 0) + 1;
+    final pairCounts = <String, int>{};
+    
+    for (final draw in draws) {
+      final numbersStr = draw['zahlen'] as String;
+      final numbers = numbersStr.split(' ').map(int.parse).toList()..sort();
+      
+      // Erzeuge alle Paare
+      for (int i = 0; i < numbers.length; i++) {
+        for (int j = i + 1; j < numbers.length; j++) {
+          final key = '${numbers[i]}-${numbers[j]}';
+          pairCounts[key] = (pairCounts[key] ?? 0) + 1;
         }
       }
     }
 
-    return PairResult(spieltyp: spieltyp, counts: counts);
-  }
+    final entries = pairCounts.entries.map((e) {
+      final parts = e.key.split('-');
+      return PairEntry(
+        a: int.parse(parts[0]),
+        b: int.parse(parts[1]),
+        count: e.value,
+      );
+    }).toList();
 
-  List<int> _extract(LottoZiehung z, {required int takeNumbersPerDraw, required int euroOffset}) {
-    if (z.zahlen.length < euroOffset + takeNumbersPerDraw) return const [];
-    return z.zahlen.sublist(euroOffset, euroOffset + takeNumbersPerDraw);
+    return PairResult(
+      spieltyp: spieltyp,
+      entries: entries,
+    );
   }
 }
