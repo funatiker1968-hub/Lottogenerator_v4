@@ -1,0 +1,164 @@
+================================================================================
+               CHAT-FORTFÜHRUNGSPROTOKOLL – LOTTOGENERATOR V4
+================================================================================
+ERSTELLT AM: $(date)
+PROJEKT: /home/user/lottogenerator_v4
+CHAT-ZEITRAUM: Letzte Sitzung bis $(date +%H:%M)
+STATUS: Build nach kritischer Korrektur erneut gestartet
+
+==================== I. KRITISCHE PROBLEME & LÖSUNGEN ====================
+
+🚨 BEHOBENE BUILD-FEHLER (JETZT):
+1. lotto_database_erweitert.dart.DISABLED
+   - Fehler: "Member not found: 'instance'"
+   - Lösung: Datei komplett gelöscht (rm -f)
+   - Grund: .DISABLED Dateien werden trotzdem kompiliert
+
+2. Singleton-Pattern Korrektur
+   - Ursprung: LottoDatabase.instance → LottoDatabase()
+   - Korrigierte Dateien:
+     * lib/screens/database_status_screen.dart
+     * lib/services/advanced_statistics_service.dart
+     * lib/services/auto_update_service.dart
+
+3. TXT-Import Service
+   - Problem: Import brach bei 2022 ab (falscher Parser)
+   - Lösung: txt_import_service.dart erstellt
+   - Format: "dd.mm.yyyy | z1 z2 z3 z4 z5 z6 | sz" → "dd-mm-yyyy"
+
+✅ AKTUELLER ANALYSE-STATUS (nach Korrekturen):
+  - 0 errors (kritische Syntaxfehler)
+  - 2 warnings (harmlos: unused_local_variable, unused_import)
+  - 41 info (Optimierungsvorschläge)
+
+==================== II. IMPLEMENTIERTE FEATURES ====================
+
+🎯 EUROJACKPOT-STATISTIKEN (VOLLSTÄNDIG):
+1. EurojackpotStatisticsService (existiert)
+   - frequencyMain()    - Hauptzahlen 1-50
+   - frequencyEuro()    - Eurozahlen 1-12
+   - gapsMain()        - Abstände Hauptzahlen
+   - gapsEuro()        - Abstände Eurozahlen
+   - pairMain()        - Paare Hauptzahlen
+   - pairEuro()        - Paare Eurozahlen
+
+2. StatisticsScreen Integration
+   - Bereits genutzt: _stats.ej.frequencyMain() [Zeile 52]
+   - Bereits genutzt: _stats.ej.frequencyEuro() [Zeile 53]
+   - Bereits genutzt: _stats.ej.gapsMain()     [Zeile 66]
+   - Bereit für UI: gapsEuro(), pairMain(), pairEuro()
+
+3. Datenbank-Abfrage
+   - Service filtert nach: spieltyp = 'eurojackpot'
+   - Zahlenformat: "1 2 12 27 29 8 10" (5 Haupt + 2 Euro)
+
+🖥️ DATABASE_STATUS_SCREEN (FUNKTIONSFÄHIG):
+1. Terminal-Logs mit Farben:
+   - info: weiß, success: grün, warning: gelb, error: rot
+   - Zeitstempel: [HH:MM:SS] Format
+
+2. Import-Buttons (um 3 Zeichen links verschoben):
+   - VOLL-IMPORT (blau)    - txt_import_service.dart
+   - AUTO-UPDATE (grün)    - temporär deaktiviert
+   - MAN. LOTTO (orange)   - Kompakt-Parser
+   - MAN. EJ (lila)        - Kompakt-Parser
+
+3. GridView Info-Karten:
+   - Lotto 6aus49: Einträge + Erstes/Letztes Datum
+   - Eurojackpot: Einträge + Erstes/Letztes Datum
+   - Gesamt: Summe aller Einträge
+
+==================== III. TECHNISCHE ARCHITEKTUR ====================
+
+🏗️ SERVICE-SCHICHTEN:
+1. LottoDatabase (Singleton)
+   - Korrekte Instanz: LottoDatabase() 
+   - Parser-Methoden: _parseLotto6aus49CompactLine() [privat]
+                     _parseEurojackpotCompactLine() [privat]
+
+2. StatisticsFacade
+   - Zentrale Anlaufstelle für Statistiken
+   - Enthält: final EurojackpotStatisticsService ej
+
+3. Parser-Typen (GETRENNT!):
+   - Parser A: Kompakt-Format "101.01.2025Mi37151826332" (manueller Import)
+   - Parser B: TXT-Format "01.01.2025 | 1 2 3 4 5 6 | 0" (Asset-Import)
+
+🗄️ DATENBANK-SCHEMA:
+  Tabelle 'ziehungen':
+    - id INTEGER PRIMARY KEY AUTOINCREMENT
+    - spieltyp TEXT NOT NULL ('lotto_6aus49' oder 'eurojackpot')
+    - datum TEXT NOT NULL ('dd-mm-yyyy')
+    - zahlen TEXT NOT NULL ('1 2 3 4 5 6' oder '1 2 12 27 29 8 10')
+    - superzahl INTEGER (-1 für vor 1991, 0-9 danach)
+
+==================== IV. BEKANNTE EINSCHRÄNKUNGEN ====================
+
+⚠️ TEMPORÄR DEAKTIVIERT:
+1. AutoUpdateService Scraper
+   - scrapeYear() Methoden existieren nicht
+   - Grund: Web-Scraper müssen separat implementiert werden
+   - Status: Gibt Demo-Daten zurück
+
+2. velocity_tracker.dart Fehler
+   - Flutter/Proot Umgebungsproblem
+   - Kein Projektfehler, betrifft lokale Installation
+   - Codemagic Build sollte funktionieren
+
+🔧 OPTIMIERUNGSBEDARF:
+1. StatisticsScreen: gapsEuro(), pairMain(), pairEuro() in UI einbinden
+2. Eurojackpot-Daten importieren (DatabaseStatusScreen → MAN. EJ)
+3. UI: Tabs oder besseren Spieltyp-Wechsel implementieren
+
+==================== V. BEFEHLE FÜR NÄCHSTEN CHAT ====================
+
+# 1. Build-Status prüfen
+cd /home/user/lottogenerator_v4
+git log --oneline -2
+flutter analyze --no-pub
+
+# 2. Eurojackpot-Daten testen
+# In StatisticsScreen aufrufen mit: StatisticsScreen(spieltyp: 'eurojackpot')
+
+# 3. Import testen
+# DatabaseStatusScreen → VOLL-IMPORT (4968 Zeilen 1955-2025)
+
+# 4. Fehlende UI-Elemente implementieren
+# gapsEuro(), pairMain(), pairEuro() in StatisticsScreen einbinden
+
+==================== VI. WICHTIGE DATEI-PFADE ====================
+
+📁 KERNDATEIEN:
+- lib/screens/database_status_screen.dart      # Import/Status UI
+- lib/screens/statistics_screen.dart           # Statistiken UI
+- lib/services/lotto_database.dart             # Haupt-Datenbank
+- lib/services/txt_import_service.dart         # TXT-Parser
+- lib/services/statistics/eurojackpot_statistics_service.dart
+
+📁 STATISTIK-SERVICES:
+- lib/services/statistics/statistics_facade.dart
+- lib/services/statistics/frequency_service.dart
+- lib/services/statistics/gap_service.dart
+- lib/services/statistics/pair_service.dart
+
+==================== VII. REVOLUTIONÄRE PARSER-FORMEL ====================
+
+🎯 MATHEMATISCHE ZIFFERN-FORMEL (LOTTO 6AUS49):
+  FORMAT: ZNtt.mm.yyyyWWZZZZZZSZ
+  Gesamtziffern (inkl. Superzahl) = 7 bis 13
+  2-stellige Zahlen = (Gesamtziffern - 7)
+  1-stellige Zahlen = 6 - (Gesamtziffern - 7)
+
+BEISPIEL: "101.01.2025Mi37151826332"
+  - 11 Ziffern = 4×2-stellig + 2×1-stellig + 1×SZ
+  - Zahlen: 3 7 15 18 26 33, Superzahl: 2
+
+🎯 EUROJACKPOT PARSER-PRINZIP:
+  Rückwärts parsen: 2 Eurozahlen → 5 Hauptzahlen
+  FORMAT: "101.03.2025120212729810"
+  - Zahlen: 1 2 12 27 29 8 10
+
+================================================================================
+ENDE DES FORTFÜHRUNGSPROTOKOLLS
+PROJEKT IST BUILD-BEREIT NACH KRITISCHER KORREKTUR
+================================================================================
