@@ -24,26 +24,20 @@ class FrequencyService {
     final draws = await database.rawQuery(query, args);
     
     final frequency = <int, int>{};
+    int numbersPerDraw = 0;
     
     for (final draw in draws) {
       final numbersStr = draw['zahlen'] as String;
       final numbers = numbersStr.split(' ').map(int.parse).toList();
       
-      // Berücksichtige nur bestimmte Zahlen pro Ziehung (z.B. 5 für EJ Hauptzahlen)
       final numbersToCount = takeNumbersPerDraw > 0 && numbers.length > euroOffset
           ? numbers.sublist(euroOffset, euroOffset + takeNumbersPerDraw)
           : numbers;
           
+      numbersPerDraw = numbersToCount.length;
+      
       for (final num in numbersToCount) {
         frequency[num] = (frequency[num] ?? 0) + 1;
-      }
-      
-      // Superzahl bei Lotto
-      if (superzahl && spieltyp == '6aus49') {
-        final sz = draw['superzahl'] as int? ?? -1;
-        if (sz >= 0 && sz <= 9) {
-          frequency[sz + 100] = (frequency[sz + 100] ?? 0) + 1; // Superzahlen offset
-        }
       }
     }
     
@@ -51,6 +45,8 @@ class FrequencyService {
       spieltyp: spieltyp,
       frequency: frequency,
       draws: draws.length,
+      numbersPerDraw: numbersPerDraw,
+      totalDraws: draws.length,
     );
   }
 }

@@ -39,12 +39,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     
     try {
       // 1. Datenbank-Übersicht
-      _dbSummary = await _stats.dbSummary(spieltyp: widget.spieltyp);
+      _dbSummary = await _stats.db.inspect(spieltyp: widget.spieltyp);
       
       // 2. Frequenzen
       if (widget.spieltyp == '6aus49') {
-        _frequencyMain = await _stats.frequencyMain(
+        _frequencyMain = await _stats.freq.frequency(
           spieltyp: widget.spieltyp,
+          takeNumbersPerDraw: 6,
+          euroOffset: 0,
         );
       } else if (widget.spieltyp == 'eurojackpot') {
         _frequencyMain = await _stats.ej.frequencyMain();
@@ -53,10 +55,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       
       // 3. Lücken (nur Top 10 overdue)
       if (widget.spieltyp == '6aus49') {
-        final gaps = await _stats.gaps(
+        final gaps = await _stats.gap.gaps(
           spieltyp: widget.spieltyp,
           minNumber: 1,
           maxNumber: 49,
+          takeNumbersPerDraw: 6,
         );
         _gapStats = gaps.take(10).toList();
       } else if (widget.spieltyp == 'eurojackpot') {
@@ -74,28 +77,29 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               const RangeBucket('31-40', 31, 40),
               const RangeBucket('41-50', 41, 50),
             ];
-      _rangeDist = await _stats.rangeDistribution(
+      _rangeDist = await _stats.cluster.distribution(
         spieltyp: widget.spieltyp,
         buckets: buckets,
         takeNumbersPerDraw: widget.spieltyp == '6aus49' ? 6 : 5,
       );
       
       // 5. Summen-Statistik
-      _sumStats = await _stats.sumStats(
+      _sumStats = await _stats.sums.sumStats(
         spieltyp: widget.spieltyp,
         takeNumbersPerDraw: widget.spieltyp == '6aus49' ? 6 : 5,
       );
       
       // 6. Paritätshistogramm (nur für Hauptzahlen)
-      _parityHist = await _stats.parity(
+      _parityHist = await _stats.parity.parityHistogram(
         spieltyp: widget.spieltyp,
         takeNumbersPerDraw: widget.spieltyp == '6aus49' ? 6 : 5,
       );
       
       // 7. Paare (nur für Lotto, optional)
       if (widget.spieltyp == '6aus49') {
-        _pairResult = await _stats.pairs(
+        _pairResult = await _stats.pairs.pairs(
           spieltyp: widget.spieltyp,
+          takeNumbersPerDraw: 6,
         );
       }
       

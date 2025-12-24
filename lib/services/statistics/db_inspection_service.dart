@@ -17,19 +17,21 @@ class DbInspectionService {
       "SELECT MIN(datum) as first FROM ziehungen WHERE spieltyp = ?",
       [spieltyp]
     );
-    final first = firstResult.first['first'] as String?;
+    final first = firstResult.first['first'] as String? ?? '';
     
     final lastResult = await database.rawQuery(
       "SELECT MAX(datum) as last FROM ziehungen WHERE spieltyp = ?",
       [spieltyp]
     );
-    final last = lastResult.first['last'] as String?;
+    final last = lastResult.first['last'] as String? ?? '';
     
     return DbSummary(
-      spieltyp: spieltyp,
+      count: count,
+      firstDate: first,
+      lastDate: last,
       draws: count,
-      firstDraw: first ?? '',
-      lastDraw: last ?? '',
+      firstDraw: first,
+      lastDraw: last,
     );
   }
 }

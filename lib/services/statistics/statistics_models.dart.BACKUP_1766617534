@@ -177,3 +177,72 @@ class GeneratedTip {
   const GeneratedTip({required this.spieltyp, required this.numbers});
 }
 
+// RangeBucket Modell
+class RangeBucket {
+  final String label;
+  final int from;
+  final int to;
+
+  const RangeBucket(this.label, this.from, this.to);
+}
+
+// RangeDistribution Modell
+class RangeDistribution {
+  final String spieltyp;
+  final List<RangeBucket> buckets;
+  final Map<String, int> counts;
+
+  RangeDistribution({
+    required this.spieltyp,
+    required this.buckets,
+    required this.counts,
+  });
+}
+
+// SumStats Modell
+class SumStats {
+  final String spieltyp;
+  final int draws;
+  final int minSum;
+  final int maxSum;
+  final double avgSum;
+  final Map<int, int> histogram;
+
+  SumStats({
+    required this.spieltyp,
+    required this.draws,
+    required this.minSum,
+    required this.maxSum,
+    required this.avgSum,
+    required this.histogram,
+  });
+}
+
+// PairResult Modell
+class PairResult {
+  final String spieltyp;
+  final List<PairEntry> entries;
+
+  PairResult({
+    required this.spieltyp,
+    required this.entries,
+  });
+
+  List<PairEntry> get sortedEntries {
+    final sorted = List<PairEntry>.from(entries);
+    sorted.sort((a, b) => b.count.compareTo(a.count));
+    return sorted;
+  }
+}
+
+class PairEntry {
+  final int a;
+  final int b;
+  final int count;
+
+  PairEntry({
+    required this.a,
+    required this.b,
+    required this.count,
+  });
+}
