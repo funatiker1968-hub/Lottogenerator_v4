@@ -1,0 +1,26 @@
+OPTION A: Segmented Button (einfacher)
+------------------------------
+In der AppBar oder unterhalb:
+  Row(
+    children: [
+      SegmentedButton(
+        segments: [
+          ButtonSegment(value: '6aus49', label: Text('Lotto 6aus49')),
+          ButtonSegment(value: 'eurojackpot', label: Text('Eurojackpot')),
+        ],
+        selected: {widget.spieltyp},
+        onSelectionChanged: (newSelection) {
+          // Neuen Screen mit geändertem spieltyp aufrufen
+          Navigator.pushReplacement(context, MaterialPageRoute(
+            builder: (context) => StatisticsScreen(spieltyp: newSelection.first),
+          ));
+        },
+      ),
+    ],
+  )
+
+OPTION B: Tabs (eleganter, benötigt State-Änderung)
+------------------------------
+- StatisticsScreen muss von StatefulWidget zu StatefulWidget mit Tabs werden
+- Zwei TabViews: einen für 6aus49, einen für Eurojackpot
+- Komplexer, aber bessere User Experience

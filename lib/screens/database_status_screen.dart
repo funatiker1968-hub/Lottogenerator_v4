@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:lottogenerator_v4/services/lotto_database.dart';
 import 'package:lottogenerator_v4/services/auto_update_service.dart';
+import 'package:lottogenerator_v4/services/txt_import_service.dart';
 
 enum LogType { info, success, warning, error }
 
@@ -38,6 +39,7 @@ class DatabaseStatusScreen extends StatefulWidget {
 class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
   final LottoDatabase _db = LottoDatabase();
   final AutoUpdateService _updateService = AutoUpdateService();
+  final TxtImportService _txtImportService = TxtImportService();
   final List<LogEntry> _logs = [];
   bool _isImporting = false;
   bool _isUpdating = false;
@@ -186,7 +188,7 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
         if (line.isEmpty || line.startsWith('#')) continue;
         
         try {
-          await _db.importLotto6aus49Line(line);
+          await _txtImportService.importTxtLine(line);
           lottoImported++;
         } catch (e) {
           _addLog(LogType.error, 'Fehler in Zeile ${i + 1}: $e');
@@ -484,44 +486,60 @@ class _DatabaseStatusScreenState extends State<DatabaseStatusScreen> {
             ),
             Container(
               color: Colors.grey[900],
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.download),
-                    label: const Text('VOLL-IMPORT'),
-                    onPressed: _isImporting ? null : _performFullImport,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
+                  Container(
+                    width: 130,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.download, size: 18),
+                      label: const Text('VOLL-IMPORT', style: TextStyle(fontSize: 12)),
+                      onPressed: _isImporting ? null : _performFullImport,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                      ),
                     ),
                   ),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.update),
-                    label: const Text('AUTO-UPDATE'),
-                    onPressed: _isUpdating ? null : _performAutoUpdate,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
+                  Container(
+                    width: 130,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.update, size: 18),
+                      label: const Text('AUTO-UPDATE', style: TextStyle(fontSize: 12)),
+                      onPressed: _isUpdating ? null : _performAutoUpdate,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                      ),
                     ),
                   ),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.input),
-                    label: const Text('MAN. LOTTO'),
-                    onPressed: _isImporting ? null : () => _showManualImportDialog('lotto'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
+                  Container(
+                    width: 130,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.input, size: 18),
+                      label: const Text('MAN. LOTTO', style: TextStyle(fontSize: 12)),
+                      onPressed: _isImporting ? null : () => _showManualImportDialog('lotto'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                      ),
                     ),
                   ),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.input),
-                    label: const Text('MAN. EJ'),
-                    onPressed: _isImporting ? null : () => _showManualImportDialog('eurojackpot'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple,
-                      foregroundColor: Colors.white,
+                  Container(
+                    width: 130,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.input, size: 18),
+                      label: const Text('MAN. EJ', style: TextStyle(fontSize: 12)),
+                      onPressed: _isImporting ? null : () => _showManualImportDialog('eurojackpot'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                      ),
                     ),
                   ),
                 ],

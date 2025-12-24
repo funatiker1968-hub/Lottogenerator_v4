@@ -1,0 +1,12 @@
+# TYPISCHE FEHLERZEILE SUCHEN UND ERSETZEN:
+# SUCHEN:  "final.*LottoDatabase.*instance"
+# ERSETZEN: "final db = LottoDatabase();"
+
+# BEISPIEL:
+# VORHER: final LottoDatabase db = LottoDatabase.instance;
+# NACHHER: final LottoDatabase db = LottoDatabase();
+
+# ZWEITER FEHLER: Fehlende Import-Statements
+# Prüfe ob diese Importe vorhanden sind:
+# import 'package:lottogenerator_v4/services/lotto_database.dart';
+# import 'package:sqflite/sqflite.dart';
