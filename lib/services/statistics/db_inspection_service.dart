@@ -7,31 +7,44 @@ class DbInspectionService {
   Future<DbSummary> dbSummary({required String spieltyp}) async {
     final database = await db.database;
     
-    final countResult = await database.rawQuery(
-      "SELECT COUNT(*) as count FROM ziehungen WHERE spieltyp = ?",
-      [spieltyp]
+    final draws = await database.query(
+      'ziehungen',
+      where: 'spieltyp = ?',
+      whereArgs: [spieltyp],
     );
-    final count = countResult.first['count'] as int;
     
-    final firstResult = await database.rawQuery(
-      "SELECT MIN(datum) as first FROM ziehungen WHERE spieltyp = ?",
-      [spieltyp]
-    );
-    final first = firstResult.first['first'] as String? ?? '';
+    if (draws.isEmpty) {
+      return DbSummary(
+        spieltyp: spieltyp,
+        count: 0,
+        firstDate: null,
+        lastDate: null,
+      );
+    }
     
-    final lastResult = await database.rawQuery(
-      "SELECT MAX(datum) as last FROM ziehungen WHERE spieltyp = ?",
-      [spieltyp]
-    );
-    final last = lastResult.first['last'] as String? ?? '';
+    // Find first and last dates
+    DateTime? firstDate;
+    DateTime? lastDate;
+    
+    for (final draw in draws) {
+      final dateStr = draw['datum'] as String?;
+      if (dateStr != null) {
+        final date = DateTime.parse(dateStr);
+        
+        if (firstDate == null || date.isBefore(firstDate)) {
+          firstDate = date;
+        }
+        if (lastDate == null || date.isAfter(lastDate)) {
+          lastDate = date;
+        }
+      }
+    }
     
     return DbSummary(
-      count: count,
-      firstDate: first,
-      lastDate: last,
-      draws: count,
-      firstDraw: first,
-      lastDraw: last,
+      spieltyp: spieltyp,
+      count: draws.length,
+      firstDate: firstDate,
+      lastDate: lastDate,
     );
   }
 }

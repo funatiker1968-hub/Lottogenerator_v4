@@ -22,8 +22,7 @@ class FrequencyService {
     }
     
     final draws = await database.rawQuery(query, args);
-    
-    final frequency = <int, int>{};
+    final counts = <int, int>{};
     int numbersPerDraw = 0;
     
     for (final draw in draws) {
@@ -33,20 +32,19 @@ class FrequencyService {
       final numbersToCount = takeNumbersPerDraw > 0 && numbers.length > euroOffset
           ? numbers.sublist(euroOffset, euroOffset + takeNumbersPerDraw)
           : numbers;
-          
+      
       numbersPerDraw = numbersToCount.length;
       
       for (final num in numbersToCount) {
-        frequency[num] = (frequency[num] ?? 0) + 1;
+        counts[num] = (counts[num] ?? 0) + 1;
       }
     }
     
     return FrequencyResult(
       spieltyp: spieltyp,
-      frequency: frequency,
-      draws: draws.length,
-      numbersPerDraw: numbersPerDraw,
+      counts: counts,
       totalDraws: draws.length,
+      numbersPerDraw: numbersPerDraw,
     );
   }
 }

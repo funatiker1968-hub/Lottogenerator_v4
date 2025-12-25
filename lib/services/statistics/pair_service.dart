@@ -4,42 +4,48 @@ import 'statistics_models.dart';
 class PairService {
   final LottoDatabase db = LottoDatabase();
 
-  Future<PairResult> pairs({required String spieltyp}) async {
+  Future<PairResult> pairs({
+    required String spieltyp,
+    int lastNDraws = 0,
+    int takeNumbersPerDraw = 6,
+    int euroOffset = 0,
+  }) async {
     final database = await db.database;
-    final draws = await database.query(
-      'ziehungen',
-      where: 'spieltyp = ?',
-      whereArgs: [spieltyp],
-      orderBy: 'datum DESC',
-    );
-
-    final pairCounts = <String, int>{};
+    
+    String query = "SELECT * FROM ziehungen WHERE spieltyp = ?";
+    final args = [spieltyp];
+    
+    if (lastNDraws > 0) {
+      query += " ORDER BY datum DESC LIMIT ?";
+      args.add(lastNDraws.toString());
+    }
+    
+    final draws = await database.rawQuery(query, args);
+    final counts = <PairKey, int>{};
     
     for (final draw in draws) {
       final numbersStr = draw['zahlen'] as String;
-      final numbers = numbersStr.split(' ').map(int.parse).toList()..sort();
+      final numbers = numbersStr.split(' ').map(int.parse).toList();
       
-      // Erzeuge alle Paare
-      for (int i = 0; i < numbers.length; i++) {
-        for (int j = i + 1; j < numbers.length; j++) {
-          final key = '${numbers[i]}-${numbers[j]}';
-          pairCounts[key] = (pairCounts[key] ?? 0) + 1;
+      final numbersToCount = takeNumbersPerDraw > 0 && numbers.length > euroOffset
+          ? numbers.sublist(euroOffset, euroOffset + takeNumbersPerDraw)
+          : numbers;
+      
+      // Sort numbers to ensure consistent pair ordering
+      numbersToCount.sort();
+      
+      // Count all pairs
+      for (int i = 0; i < numbersToCount.length; i++) {
+        for (int j = i + 1; j < numbersToCount.length; j++) {
+          final pair = PairKey(numbersToCount[i], numbersToCount[j]);
+          counts[pair] = (counts[pair] ?? 0) + 1;
         }
       }
     }
-
-    final entries = pairCounts.entries.map((e) {
-      final parts = e.key.split('-');
-      return PairEntry(
-        a: int.parse(parts[0]),
-        b: int.parse(parts[1]),
-        count: e.value,
-      );
-    }).toList();
-
+    
     return PairResult(
       spieltyp: spieltyp,
-      entries: entries,
+      counts: counts,
     );
   }
 }

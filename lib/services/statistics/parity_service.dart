@@ -3,34 +3,47 @@ import 'package:lottogenerator_v4/services/lotto_database.dart';
 class ParityService {
   final LottoDatabase db = LottoDatabase();
 
-  Future<Map<String, int>> parity({required String spieltyp}) async {
+  Future<Map<String, int>> parity({
+    required String spieltyp,
+    int lastNDraws = 0,
+    int takeNumbersPerDraw = 6,
+    int euroOffset = 0,
+  }) async {
     final database = await db.database;
-    final draws = await database.query(
-      'ziehungen',
-      where: 'spieltyp = ?',
-      whereArgs: [spieltyp],
-      orderBy: 'datum DESC',
-    );
-
-    int gerade = 0;
-    int ungerade = 0;
+    
+    String query = "SELECT * FROM ziehungen WHERE spieltyp = ?";
+    final args = [spieltyp];
+    
+    if (lastNDraws > 0) {
+      query += " ORDER BY datum DESC LIMIT ?";
+      args.add(lastNDraws.toString());
+    }
+    
+    final draws = await database.rawQuery(query, args);
+    
+    int evenCount = 0;
+    int oddCount = 0;
     
     for (final draw in draws) {
       final numbersStr = draw['zahlen'] as String;
-      final numbers = numbersStr.split(' ').map(int.parse);
+      final numbers = numbersStr.split(' ').map(int.parse).toList();
       
-      for (final num in numbers) {
-        if (num.isEven) {
-          gerade++;
+      final numbersToCheck = takeNumbersPerDraw > 0 && numbers.length > euroOffset
+          ? numbers.sublist(euroOffset, euroOffset + takeNumbersPerDraw)
+          : numbers;
+      
+      for (final num in numbersToCheck) {
+        if (num % 2 == 0) {
+          evenCount++;
         } else {
-          ungerade++;
+          oddCount++;
         }
       }
     }
-
+    
     return {
-      'gerade': gerade,
-      'ungerade': ungerade,
+      'even': evenCount,
+      'odd': oddCount,
     };
   }
 }
