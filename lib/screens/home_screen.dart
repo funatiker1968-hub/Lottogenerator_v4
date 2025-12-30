@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'lotto_6aus49_screen.dart';
 import 'eurojackpot_screen.dart';
 import 'statistics_screen.dart';
@@ -33,10 +34,12 @@ class _HomeScreenState extends State<HomeScreen> {
             Colors.green,
             () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const Lotto6aus49Screen()),
+              MaterialPageRoute(
+                builder: (context) => const Lotto6aus49Screen(),
+              ),
             ),
           ),
-          
+
           // Kachel 2: Eurojackpot
           _buildTile(
             context,
@@ -45,10 +48,12 @@ class _HomeScreenState extends State<HomeScreen> {
             Colors.purple,
             () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const EurojackpotScreen()),
+              MaterialPageRoute(
+                builder: (context) => const EurojackpotScreen(),
+              ),
             ),
           ),
-          
+
           // Kachel 3: Import & Update
           _buildTile(
             context,
@@ -57,11 +62,13 @@ class _HomeScreenState extends State<HomeScreen> {
             Colors.orange,
             () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const DatabaseStatusScreen()),
+              MaterialPageRoute(
+                builder: (context) => const DatabaseStatusScreen(),
+              ),
             ),
           ),
-          
-          // Kachel 4: Statistik
+
+          // Kachel 4: Statistik (DB-basiert, Lotto 6aus49)
           _buildTile(
             context,
             Icons.bar_chart,
@@ -69,7 +76,10 @@ class _HomeScreenState extends State<HomeScreen> {
             Colors.blue,
             () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const StatisticsScreen()),
+              MaterialPageRoute(
+                builder: (context) =>
+                    const StatisticsScreen(spieltyp: '6aus49'),
+              ),
             ),
           ),
         ],
@@ -77,8 +87,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTile(BuildContext context, IconData icon, String title,
-      Color color, VoidCallback onTap) {
+  Widget _buildTile(
+    BuildContext context,
+    IconData icon,
+    String title,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12.0),
@@ -93,7 +108,10 @@ class _HomeScreenState extends State<HomeScreen> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [color.withOpacity(0.1), color.withOpacity(0.3)],
+              colors: [
+                color.withOpacity(0.1),
+                color.withOpacity(0.3),
+              ],
             ),
           ),
           child: Column(
@@ -103,10 +121,13 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 12.0),
               Text(
                 title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
               ),
             ],
           ),

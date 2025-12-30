@@ -1,5 +1,4 @@
 import '../lotto_database.dart';
-import '../../models/lotto_data.dart';
 
 class StatisticsDbAdapter {
   final LottoDatabase _db = LottoDatabase.instance;
