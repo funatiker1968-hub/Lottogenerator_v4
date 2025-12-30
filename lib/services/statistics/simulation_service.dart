@@ -5,20 +5,24 @@ import 'statistics_models.dart';
 class SimulationService {
   /// Lotto 6aus49:
   /// tipMain = 6 Zahlen
-  /// tipExtra = Superzahl (0..9) optional (null = ignorieren)
+  /// superzahl (0..9) optional (null = ignorieren)
   Future<SimulationSummary> simulateLotto6aus49({
     required List<int> tipMain,
     int? superzahl,
   }) async {
-    final draws = await ErweiterteLottoDatenbank.holeAlleZiehungen('6aus49');
-    final sorted = List<LottoZiehung>.from(draws)..sort((a, b) => a.datum.compareTo(b.datum));
+    final draws =
+        await ErweiterteLottoDatenbank.holeAlleZiehungen('lotto_6aus49');
+
+    final sorted = List<LottoZiehung>.from(draws)
+      ..sort((a, b) => a.datum.compareTo(b.datum));
 
     final tipSet = tipMain.toSet();
     final hist = <String, int>{};
 
     for (final z in sorted) {
       final hitsMain = z.zahlen.where(tipSet.contains).length;
-      final hitsSz = (superzahl == null) ? 0 : ((z.superzahl == superzahl) ? 1 : 0);
+      final hitsSz =
+          (superzahl == null) ? 0 : ((z.superzahl == superzahl) ? 1 : 0);
 
       final key = superzahl == null
           ? '$hitsMain'
@@ -27,7 +31,11 @@ class SimulationService {
       hist[key] = (hist[key] ?? 0) + 1;
     }
 
-    return SimulationSummary(spieltyp: '6aus49', draws: sorted.length, histogram: hist);
+    return SimulationSummary(
+      spieltyp: 'lotto_6aus49',
+      draws: sorted.length,
+      histogram: hist,
+    );
   }
 
   /// Eurojackpot:
@@ -36,16 +44,19 @@ class SimulationService {
     required List<int> tipMain,
     required List<int> tipEuro,
   }) async {
-    final draws = await ErweiterteLottoDatenbank.holeAlleZiehungen('eurojackpot');
-    final sorted = List<LottoZiehung>.from(draws)..sort((a, b) => a.datum.compareTo(b.datum));
+    final draws =
+        await ErweiterteLottoDatenbank.holeAlleZiehungen('eurojackpot');
+
+    final sorted = List<LottoZiehung>.from(draws)
+      ..sort((a, b) => a.datum.compareTo(b.datum));
 
     final mainSet = tipMain.toSet();
     final euroSet = tipEuro.toSet();
-
     final hist = <String, int>{};
 
     for (final z in sorted) {
       if (z.zahlen.length < 7) continue;
+
       final drawMain = z.zahlen.sublist(0, 5);
       final drawEuro = z.zahlen.sublist(5, 7);
 
@@ -56,6 +67,10 @@ class SimulationService {
       hist[key] = (hist[key] ?? 0) + 1;
     }
 
-    return SimulationSummary(spieltyp: 'eurojackpot', draws: sorted.length, histogram: hist);
+    return SimulationSummary(
+      spieltyp: 'eurojackpot',
+      draws: sorted.length,
+      histogram: hist,
+    );
   }
 }
