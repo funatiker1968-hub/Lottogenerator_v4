@@ -1,13 +1,16 @@
 class LottoDraw {
-  final String spieltyp; // "6aus49" | "eurojackpot"
-  final DateTime datum;
-  final List<int> zahlen; // sortiert, ohne Superzahl
-  final int? superzahl; // nur bei 6aus49, sonst null
+  final DateTime date;
+  final List<int> numbers;
+  final int extra; // Superzahl (Lotto) oder -1 wenn nicht vorhanden
 
-  const LottoDraw({
-    required this.spieltyp,
-    required this.datum,
-    required this.zahlen,
-    this.superzahl,
+  LottoDraw({
+    required this.date,
+    required this.numbers,
+    required this.extra,
   });
+
+  @override
+  String toString() {
+    return 'LottoDraw(date: $date, numbers: $numbers, extra: $extra)';
+  }
 }

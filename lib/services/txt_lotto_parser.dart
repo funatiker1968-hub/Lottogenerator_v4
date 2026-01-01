@@ -1,58 +1,68 @@
+import 'dart:io';
 import '../models/lotto_draw.dart';
 
 class TxtLottoParser {
-  /// Erwartetes Format (Beispiel 6aus49):
-  /// 06.12.2025Sa1526273335372
-  ///
-  /// Erwartetes Format (Eurojackpot):
-  /// 06.12.20251526273335372
-  static LottoDraw parseLine(String line, String spieltyp) {
-    if (line.length < 14) {
-      throw FormatException('Zeile zu kurz: $line');
+  static final DateTime superzahlStart =
+      DateTime(1991, 12, 7); // historisch korrekt
+
+  /// Liest assets/data/lotto_1955_2025.txt
+  static List<LottoDraw> parseLotto1955_2025(String path) {
+    final file = File(path);
+    if (!file.existsSync()) {
+      throw Exception('TXT-Datei nicht gefunden: $path');
     }
 
-    // Datum
-    final day = int.parse(line.substring(0, 2));
-    final month = int.parse(line.substring(3, 5));
-    final year = int.parse(line.substring(6, 10));
-    final datum = DateTime(year, month, day);
+    final lines = file.readAsLinesSync();
+    final draws = <LottoDraw>[];
 
-    // Zahlenblock beginnt unterschiedlich
-    final numbersStart = spieltyp == '6aus49' ? 12 : 10;
-    final numbersRaw = line.substring(numbersStart);
+    for (final line in lines) {
+      if (line.trim().isEmpty) continue;
 
-    final zahlen = <int>[];
-    for (int i = 0; i + 1 < numbersRaw.length; i += 2) {
-      zahlen.add(int.parse(numbersRaw.substring(i, i + 2)));
-    }
+      // Erwartet: DD.MM.YYYY | 1 2 3 4 5 6 | X
+      final parts = line.split('|');
+      if (parts.length < 2) continue;
 
-    zahlen.sort();
+      final datePart = parts[0].trim();
+      final numbersPart = parts[1].trim();
+      final extraPart = parts.length >= 3 ? parts[2].trim() : '';
 
-    if (spieltyp == '6aus49') {
-      final superzahl = zahlen.removeLast();
-      return LottoDraw(
-        spieltyp: spieltyp,
-        datum: datum,
-        zahlen: zahlen,
-        superzahl: superzahl,
+      // Datum
+      final d = datePart.split('.');
+      if (d.length != 3) continue;
+
+      final date = DateTime(
+        int.parse(d[2]),
+        int.parse(d[1]),
+        int.parse(d[0]),
+      );
+
+      // Zahlen
+      final numbers = numbersPart
+          .split(' ')
+          .where((e) => e.trim().isNotEmpty)
+          .map(int.parse)
+          .toList();
+
+      if (numbers.length != 6) continue;
+
+      // Superzahl
+      int extra = -1;
+      if (date.isAfter(superzahlStart) ||
+          date.isAtSameMomentAs(superzahlStart)) {
+        if (extraPart.isNotEmpty) {
+          extra = int.parse(extraPart);
+        }
+      }
+
+      draws.add(
+        LottoDraw(
+          date: date,
+          numbers: numbers,
+          extra: extra,
+        ),
       );
     }
 
-    return LottoDraw(
-      spieltyp: spieltyp,
-      datum: datum,
-      zahlen: zahlen,
-      superzahl: null,
-    );
-  }
-
-  static List<LottoDraw> parseText(String text, String spieltyp) {
-    final lines = text
-        .split('\n')
-        .map((l) => l.trim())
-        .where((l) => l.isNotEmpty)
-        .toList();
-
-    return lines.map((l) => parseLine(l, spieltyp)).toList();
+    return draws;
   }
 }
