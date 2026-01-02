@@ -1,195 +1,166 @@
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-class DatabaseImportScreen extends StatelessWidget {
+import '../services/txt_lotto_parser.dart';
+import '../services/txt_eurojackpot_parser.dart';
+import '../models/parse_result.dart';
+
+enum ImportType { lotto, eurojackpot }
+
+class DatabaseImportScreen extends StatefulWidget {
   const DatabaseImportScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final bgDark = Colors.grey.shade800;
-    final bgDarker = Colors.grey.shade900;
+  State<DatabaseImportScreen> createState() => _DatabaseImportScreenState();
+}
 
+class _DatabaseImportScreenState extends State<DatabaseImportScreen> {
+  ImportType _type = ImportType.lotto;
+  final TextEditingController _controller = TextEditingController();
+
+  ParseResult? _result;
+  String _status = '';
+
+  Future<void> _loadAsset() async {
+    try {
+      final path = _type == ImportType.lotto
+          ? 'assets/data/lotto_1955_2025.txt'
+          : 'assets/data/eurojackpot_2012_2025.txt';
+
+      final text = await rootBundle.loadString(path);
+      _controller.text = text;
+      _status = 'Asset geladen: $path';
+      _result = null;
+      setState(() {});
+    } catch (e) {
+      _status = 'FEHLER: Asset nicht gefunden';
+      setState(() {});
+    }
+  }
+
+  void _parse() {
+    try {
+      _result = _type == ImportType.lotto
+          ? parseLottoTxt(_controller.text)
+          : parseEurojackpotTxt(_controller.text);
+
+      _status =
+          'OK: ${_result!.valid} gültig, ${_result!.errors} Fehler';
+    } catch (e) {
+      _status = 'PARSER-FEHLER';
+      _result = null;
+    }
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Datenimport'),
-        backgroundColor: bgDarker,
+        centerTitle: true,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              bgDark,
-              bgDarker,
-            ],
-          ),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            // STATUS-KACHELN
-            Row(
-              children: [
-                _statusTile(
-                  title: 'Lotto 6aus49',
-                  lines: const [
-                    'Ziehungen: 0',
-                    'Von: -',
-                    'Bis: -',
-                  ],
-                ),
-                const SizedBox(width: 8),
-                _statusTile(
-                  title: 'Eurojackpot',
-                  lines: const [
-                    'Ziehungen: 0',
-                    'Von: -',
-                    'Bis: -',
-                  ],
-                ),
-                const SizedBox(width: 8),
-                _statusTile(
-                  title: 'Gesamt',
-                  lines: const [
-                    'Ziehungen: 0',
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // HAUPTBEREICH
-            Expanded(
-              child: Row(
-                children: [
-                  // LINKS: DATENLISTE
-                  Expanded(
-                    flex: 2,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade700),
-                      ),
-                      padding: const EdgeInsets.all(8),
-                      child: const SingleChildScrollView(
-                        child: Text(
-                          'Ziehungen erscheinen hier...\n\n'
-                          'Beispiel:\n'
-                          'Mi 10.01.2024  1 2 3 4 5 6 | SZ 7\n'
-                          'Sa 13.01.2024  3 8 12 19 33 45 | SZ 2\n',
-                          style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 13,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-
-                  // RECHTS: LOG
-                  Expanded(
-                    flex: 1,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade700),
-                      ),
-                      padding: const EdgeInsets.all(8),
-                      child: const SingleChildScrollView(
-                        child: Text(
-                          '[LOG]\n'
-                          'Bereit.\n'
-                          'Warte auf Import...\n',
-                          style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                            color: Colors.greenAccent,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+      body: Column(
+        children: [
+          // Header (zweistufig dunkler)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.grey.shade700,
+                  Colors.grey.shade900,
                 ],
               ),
             ),
-
-            const SizedBox(height: 12),
-
-            // BUTTONS
-            Row(
+            child: Row(
               children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.download),
-                    label: const Text('LOTTO IMPORT'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade700,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () {
-                      // TODO: TXT-Import Lotto
-                    },
-                  ),
+                ChoiceChip(
+                  label: const Text('Lotto 6aus49'),
+                  selected: _type == ImportType.lotto,
+                  onSelected: (_) =>
+                      setState(() => _type = ImportType.lotto),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.download),
-                    label: const Text('EUROJACKPOT IMPORT'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () {
-                      // TODO: TXT-Import Eurojackpot
-                    },
-                  ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('Eurojackpot'),
+                  selected: _type == ImportType.eurojackpot,
+                  onSelected: (_) =>
+                      setState(() => _type = ImportType.eurojackpot),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.folder_open),
+                  tooltip: 'Asset laden',
+                  onPressed: _loadAsset,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.play_arrow),
+                  tooltip: 'Parser ausführen',
+                  onPressed: _parse,
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
+          ),
 
-  static Widget _statusTile({
-    required String title,
-    required List<String> lines,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade700,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade500),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 6),
-            for (final l in lines)
-              Text(
-                l,
+          // Textfeld
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: TextField(
+                controller: _controller,
+                expands: true,
+                maxLines: null,
+                minLines: null,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'TXT einfügen oder Asset laden …',
+                ),
                 style: const TextStyle(
+                  fontFamily: 'monospace',
                   fontSize: 12,
-                  color: Colors.white70,
                 ),
               ),
-          ],
-        ),
+            ),
+          ),
+
+          // Vorschau / Status
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            color: Colors.black,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _status,
+                  style: const TextStyle(
+                    color: Colors.greenAccent,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                if (_result != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Vorschau (erste 5 Zeilen):',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 4),
+                  for (final line in _result!.preview)
+                    Text(
+                      line,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,11 +1,11 @@
 class ParseResult {
   final int valid;
   final int errors;
-  final List<String> errorLines;
+  final List<String> preview;
 
   const ParseResult({
     required this.valid,
     required this.errors,
-    this.errorLines = const [],
+    required this.preview,
   });
 }

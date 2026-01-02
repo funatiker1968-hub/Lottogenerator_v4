@@ -1,8 +1,9 @@
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 
-import 'lotto_6aus49_screen.dart';
+import 'lotto6/lotto6_screen.dart';
 import 'eurojackpot_screen.dart';
-import 'import_screen.dart';
+import 'database_import_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -11,25 +12,26 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lottogenerator V4'),
+        title: const Text('Lottogenerator v4'),
         centerTitle: true,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: GridView.count(
           crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
           children: [
             _tile(
               context,
               title: 'Lotto 6aus49',
+              subtitle: 'Tipps & Schein',
               icon: Icons.confirmation_number,
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const Lotto6aus49Screen(),
+                    builder: (_) => const Lotto6Screen(),
                   ),
                 );
               },
@@ -37,6 +39,7 @@ class HomeScreen extends StatelessWidget {
             _tile(
               context,
               title: 'Eurojackpot',
+              subtitle: 'Tipps & Schein',
               icon: Icons.euro,
               onTap: () {
                 Navigator.push(
@@ -50,12 +53,13 @@ class HomeScreen extends StatelessWidget {
             _tile(
               context,
               title: 'Datenimport',
-              icon: Icons.download,
+              subtitle: 'TXT / Manuell',
+              icon: Icons.upload_file,
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const ImportScreen(),
+                    builder: (_) => const DatabaseImportScreen(),
                   ),
                 );
               },
@@ -63,10 +67,9 @@ class HomeScreen extends StatelessWidget {
             _tile(
               context,
               title: 'Statistik',
+              subtitle: 'kommt danach',
               icon: Icons.bar_chart,
-              onTap: () {
-                // bewusst leer – kommt NACH Import & DB
-              },
+              onTap: () {},
             ),
           ],
         ),
@@ -77,6 +80,7 @@ class HomeScreen extends StatelessWidget {
   Widget _tile(
     BuildContext context, {
     required String title,
+    required String subtitle,
     required IconData icon,
     required VoidCallback onTap,
   }) {
@@ -85,26 +89,26 @@ class HomeScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.grey.shade800,
-              Colors.grey.shade900,
-            ],
-          ),
+          color: Colors.grey.shade200,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade400),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 48, color: Colors.white),
+            Icon(icon, size: 48),
             const SizedBox(height: 12),
             Text(
               title,
-              textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Colors.white,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 12),
             ),
           ],
         ),
