@@ -1,22 +1,11 @@
-class ParserResult {
-  final int valid;
-  final int errors;
-
-  const ParserResult({
-    required this.valid,
-    required this.errors,
-  });
-}
+import 'txt_lotto_parser.dart';
 
 ///
-/// Lotto 6aus49 TXT Parser
+/// Eurojackpot TXT Parser
 /// Format:
-/// DD.MM.YYYY | n n n n n n | superzahl
-/// superzahl:
-///   -1 = nicht vorhanden (vor 07.12.1991)
-///    0–9 = gültige Superzahl
+/// YYYY-MM-DD | n n n n n | e e
 ///
-ParserResult parseLotto1955Txt(String text) {
+ParserResult parseEurojackpotTxt(String text) {
   int valid = 0;
   int errors = 0;
 
@@ -24,7 +13,7 @@ ParserResult parseLotto1955Txt(String text) {
 
   for (final raw in lines) {
     final line = raw.trim();
-    if (line.isEmpty) continue;
+    if (line.isEmpty || line.startsWith('#')) continue;
 
     try {
       final parts = line.split('|');
@@ -35,26 +24,29 @@ ParserResult parseLotto1955Txt(String text) {
 
       // Datum
       final date = parts[0].trim();
-      final d = date.split('.');
-      if (d.length != 3) {
+      if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date)) {
         errors++;
         continue;
       }
 
-      // Zahlen
-      final numbers = parts[1]
+      // Hauptzahlen
+      final main = parts[1]
           .trim()
           .split(RegExp(r'\s+'))
           .map(int.parse)
           .toList();
-      if (numbers.length != 6) {
+      if (main.length != 5) {
         errors++;
         continue;
       }
 
-      // Superzahl
-      final superzahl = int.parse(parts[2].trim());
-      if (superzahl < -1 || superzahl > 9) {
+      // Eurozahlen
+      final euro = parts[2]
+          .trim()
+          .split(RegExp(r'\s+'))
+          .map(int.parse)
+          .toList();
+      if (euro.length != 2) {
         errors++;
         continue;
       }

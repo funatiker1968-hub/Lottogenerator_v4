@@ -1,16 +1,11 @@
 class LottoDraw {
   final DateTime date;
-  final List<int> numbers;
-  final int extra; // Superzahl (Lotto) oder -1 wenn nicht vorhanden
+  final List<int> numbers; // 6 bei Lotto, 5+2 bei Eurojackpot
+  final int superzahl; // Lotto: -1, 0–9 | Eurojackpot: immer -1
 
   LottoDraw({
     required this.date,
     required this.numbers,
-    required this.extra,
+    required this.superzahl,
   });
-
-  @override
-  String toString() {
-    return 'LottoDraw(date: $date, numbers: $numbers, extra: $extra)';
-  }
 }

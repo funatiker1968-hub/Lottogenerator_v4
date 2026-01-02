@@ -1,6 +1,11 @@
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
 import '../services/txt_lotto_parser.dart';
-import '../models/lotto_draw.dart';
+import '../services/txt_eurojackpot_parser.dart';
+
+enum ImportType { lotto, eurojackpot }
 
 class ImportScreen extends StatefulWidget {
   const ImportScreen({super.key});
@@ -10,63 +15,120 @@ class ImportScreen extends StatefulWidget {
 }
 
 class _ImportScreenState extends State<ImportScreen> {
-  List<LottoDraw>? lottoDraws;
-  String? error;
+  ImportType _type = ImportType.lotto;
+  final TextEditingController _controller = TextEditingController();
+  String _log = '';
 
-  Future<void> loadLotto() async {
+  Future<void> _loadAsset() async {
     try {
-      final draws = TxtLottoParser.parseLotto1955_2025(
-        'assets/data/lotto_1955_2025.txt',
-      );
-      setState(() {
-        lottoDraws = draws;
-        error = null;
-      });
+      final path = _type == ImportType.lotto
+          ? 'assets/data/lotto_1955_2025.txt'
+          : 'assets/data/eurojackpot_2012_2025.txt';
+
+      final text = await rootBundle.loadString(path);
+      _controller.text = text;
+      _log = 'Asset geladen: $path';
     } catch (e) {
-      setState(() {
-        error = e.toString();
-        lottoDraws = null;
-      });
+      _log = 'FEHLER: $e';
     }
+    setState(() {});
+  }
+
+  void _parse() {
+    try {
+      final result = _type == ImportType.lotto
+          ? parseLotto1955Txt(_controller.text)
+          : parseEurojackpotTxt(_controller.text);
+
+      _log =
+          'OK\nGültig: ${result.valid}\nFehler: ${result.errors}';
+    } catch (e) {
+      _log = 'PARSER-FEHLER: $e';
+    }
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Import-Test (TXT)'),
+        title: const Text('Datenimport'),
+        centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ElevatedButton(
-              onPressed: loadLotto,
-              child: const Text('Lotto 6aus49 TXT laden'),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.grey.shade700,
+                  Colors.grey.shade900,
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
+            child: Row(
+              children: [
+                ChoiceChip(
+                  label: const Text('Lotto 6aus49'),
+                  selected: _type == ImportType.lotto,
+                  onSelected: (_) =>
+                      setState(() => _type = ImportType.lotto),
+                ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('Eurojackpot'),
+                  selected: _type == ImportType.eurojackpot,
+                  onSelected: (_) =>
+                      setState(() => _type = ImportType.eurojackpot),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.folder_open),
+                  onPressed: _loadAsset,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.play_arrow),
+                  onPressed: _parse,
+                ),
+              ],
+            ),
+          ),
 
-            if (error != null)
-              Text(
-                error!,
-                style: const TextStyle(color: Colors.red),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: TextField(
+                controller: _controller,
+                expands: true,
+                maxLines: null,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'TXT hier einfügen oder Asset laden',
+                ),
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                ),
               ),
+            ),
+          ),
 
-            if (lottoDraws != null) ...[
-              Text('Ziehungen: ${lottoDraws!.length}'),
-              const SizedBox(height: 8),
-              Text('Erste Ziehung: ${lottoDraws!.first.date}'),
-              Text('Letzte Ziehung: ${lottoDraws!.last.date}'),
-              const SizedBox(height: 12),
-              Text(
-                'Beispiel:',
-                style: Theme.of(context).textTheme.titleMedium,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            color: Colors.black,
+            child: Text(
+              _log,
+              style: const TextStyle(
+                color: Colors.greenAccent,
+                fontFamily: 'monospace',
+                fontSize: 12,
               ),
-              Text(lottoDraws!.first.toString()),
-            ],
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
