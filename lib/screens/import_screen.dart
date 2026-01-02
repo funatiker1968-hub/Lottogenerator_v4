@@ -1,9 +1,9 @@
-// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/txt_lotto_parser.dart';
 import '../services/txt_eurojackpot_parser.dart';
+import '../models/parse_result.dart';
 
 enum ImportType { lotto, eurojackpot }
 
@@ -17,31 +17,33 @@ class ImportScreen extends StatefulWidget {
 class _ImportScreenState extends State<ImportScreen> {
   ImportType _type = ImportType.lotto;
   final TextEditingController _controller = TextEditingController();
+  ParseResult? _result;
   String _log = '';
 
   Future<void> _loadAsset() async {
-    try {
-      final path = _type == ImportType.lotto
-          ? 'assets/data/lotto_1955_2025.txt'
-          : 'assets/data/eurojackpot_2012_2025.txt';
+    final path = _type == ImportType.lotto
+        ? 'assets/data/lotto_1955_2025.txt'
+        : 'assets/data/eurojackpot_2012_2025.txt';
 
+    try {
       final text = await rootBundle.loadString(path);
       _controller.text = text;
       _log = 'Asset geladen: $path';
+      setState(() {});
     } catch (e) {
-      _log = 'FEHLER: $e';
+      _log = 'FEHLER beim Laden: $e';
+      setState(() {});
     }
-    setState(() {});
   }
 
   void _parse() {
     try {
-      final result = _type == ImportType.lotto
-          ? parseLotto1955Txt(_controller.text)
+      _result = _type == ImportType.lotto
+          ? parseLottoTxt(_controller.text)
           : parseEurojackpotTxt(_controller.text);
 
       _log =
-          'OK\nGültig: ${result.valid}\nFehler: ${result.errors}';
+          'OK\nGelesen: ${_result!.valid}\nFehler: ${_result!.errors}';
     } catch (e) {
       _log = 'PARSER-FEHLER: $e';
     }
@@ -103,9 +105,10 @@ class _ImportScreenState extends State<ImportScreen> {
                 controller: _controller,
                 expands: true,
                 maxLines: null,
+                minLines: null,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  hintText: 'TXT hier einfügen oder Asset laden',
+                  hintText: 'TXT einfügen oder Asset laden …',
                 ),
                 style: const TextStyle(
                   fontFamily: 'monospace',
