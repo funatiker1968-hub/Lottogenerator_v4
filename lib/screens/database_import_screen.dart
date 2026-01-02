@@ -30,11 +30,12 @@ class _DatabaseImportScreenState extends State<DatabaseImportScreen> {
 
       final text = await rootBundle.loadString(path);
       _controller.text = text;
-      _status = 'Asset geladen: $path';
       _result = null;
+      _status = 'Asset geladen: $path';
       setState(() {});
-    } catch (e) {
+    } catch (_) {
       _status = 'FEHLER: Asset nicht gefunden';
+      _result = null;
       setState(() {});
     }
   }
@@ -47,7 +48,7 @@ class _DatabaseImportScreenState extends State<DatabaseImportScreen> {
 
       _status =
           'OK: ${_result!.valid} gültig, ${_result!.errors} Fehler';
-    } catch (e) {
+    } catch (_) {
       _status = 'PARSER-FEHLER';
       _result = null;
     }
@@ -125,7 +126,7 @@ class _DatabaseImportScreenState extends State<DatabaseImportScreen> {
             ),
           ),
 
-          // Vorschau / Status
+          // Status + Vorschau
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -140,16 +141,16 @@ class _DatabaseImportScreenState extends State<DatabaseImportScreen> {
                     fontFamily: 'monospace',
                   ),
                 ),
-                if (_result != null) ...[
+                if (_result != null && _result!.entries.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    'Vorschau (erste 5 Zeilen):',
-                    style: const TextStyle(color: Colors.white),
+                  const Text(
+                    'Vorschau (erste 5 Einträge):',
+                    style: TextStyle(color: Colors.white),
                   ),
                   const SizedBox(height: 4),
-                  for (final line in _result!.preview)
+                  for (final row in _result!.entries.take(5))
                     Text(
-                      line,
+                      row.toString(),
                       style: const TextStyle(
                         color: Colors.white70,
                         fontFamily: 'monospace',

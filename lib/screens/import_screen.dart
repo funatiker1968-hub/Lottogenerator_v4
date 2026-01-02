@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -17,8 +18,9 @@ class ImportScreen extends StatefulWidget {
 class _ImportScreenState extends State<ImportScreen> {
   ImportType _type = ImportType.lotto;
   final TextEditingController _controller = TextEditingController();
+
   ParseResult? _result;
-  String _log = '';
+  String _status = '';
 
   Future<void> _loadAsset() async {
     final path = _type == ImportType.lotto
@@ -26,14 +28,14 @@ class _ImportScreenState extends State<ImportScreen> {
         : 'assets/data/eurojackpot_2012_2025.txt';
 
     try {
-      final text = await rootBundle.loadString(path);
-      _controller.text = text;
-      _log = 'Asset geladen: $path';
-      setState(() {});
-    } catch (e) {
-      _log = 'FEHLER beim Laden: $e';
-      setState(() {});
+      _controller.text = await rootBundle.loadString(path);
+      _result = null;
+      _status = 'Asset geladen: $path';
+    } catch (_) {
+      _result = null;
+      _status = 'FEHLER: Asset nicht gefunden';
     }
+    setState(() {});
   }
 
   void _parse() {
@@ -42,10 +44,11 @@ class _ImportScreenState extends State<ImportScreen> {
           ? parseLottoTxt(_controller.text)
           : parseEurojackpotTxt(_controller.text);
 
-      _log =
-          'OK\nGelesen: ${_result!.valid}\nFehler: ${_result!.errors}';
-    } catch (e) {
-      _log = 'PARSER-FEHLER: $e';
+      _status =
+          'OK: ${_result!.valid} gültig, ${_result!.errors} Fehler';
+    } catch (_) {
+      _result = null;
+      _status = 'PARSER-FEHLER';
     }
     setState(() {});
   }
@@ -54,13 +57,13 @@ class _ImportScreenState extends State<ImportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Datenimport'),
+        title: const Text('Import'),
         centerTitle: true,
       ),
       body: Column(
         children: [
+          // Header – zweistufig dunkler
           Container(
-            width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -98,6 +101,7 @@ class _ImportScreenState extends State<ImportScreen> {
             ),
           ),
 
+          // Textfeld
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -105,7 +109,6 @@ class _ImportScreenState extends State<ImportScreen> {
                 controller: _controller,
                 expands: true,
                 maxLines: null,
-                minLines: null,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   hintText: 'TXT einfügen oder Asset laden …',
@@ -118,17 +121,39 @@ class _ImportScreenState extends State<ImportScreen> {
             ),
           ),
 
+          // Status + Vorschau
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             color: Colors.black,
-            child: Text(
-              _log,
-              style: const TextStyle(
-                color: Colors.greenAccent,
-                fontFamily: 'monospace',
-                fontSize: 12,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _status,
+                  style: const TextStyle(
+                    color: Colors.greenAccent,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                if (_result != null && _result!.entries.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Vorschau (erste 5 Einträge):',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 4),
+                  for (final row in _result!.entries.take(5))
+                    Text(
+                      row.toString(),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                      ),
+                    ),
+                ],
+              ],
             ),
           ),
         ],

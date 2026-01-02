@@ -1,38 +1,39 @@
 import '../models/parse_result.dart';
 
-ParseResult parseLottoTxt(String input) {
-  final lines = input.split('\n');
-  final preview = <String>[];
-  int valid = 0;
+ParseResult parseLottoTxt(String text) {
+  final lines = text.split('\n');
+  final entries = <Map<String, dynamic>>[];
   int errors = 0;
 
-  for (final raw in lines) {
-    final line = raw.trim();
-    if (line.isEmpty) continue;
+  for (final line in lines) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) continue;
 
-    // Format: DD.MM.YYYY | 6 Zahlen | Superzahl
-    final parts = line.split('|');
-    if (parts.length != 3) {
+    try {
+      // Format:
+      // DD.MM.YYYY | 1 2 3 4 5 6 | -1
+      final parts = trimmed.split('|');
+      if (parts.length < 2) throw 'Ungültige Zeile';
+
+      final date = parts[0].trim();
+      final numbers =
+          parts[1].trim().split(' ').map(int.parse).toList();
+      final superzahl =
+          parts.length >= 3 ? int.parse(parts[2].trim()) : -1;
+
+      entries.add({
+        'date': date,
+        'numbers': numbers,
+        'superzahl': superzahl,
+      });
+    } catch (_) {
       errors++;
-      continue;
-    }
-
-    final numbers =
-        parts[1].trim().split(' ').where((e) => e.isNotEmpty).toList();
-    if (numbers.length != 6) {
-      errors++;
-      continue;
-    }
-
-    valid++;
-    if (preview.length < 5) {
-      preview.add(line);
     }
   }
 
   return ParseResult(
-    valid: valid,
+    entries: entries,
+    valid: entries.length,
     errors: errors,
-    preview: preview,
   );
 }
