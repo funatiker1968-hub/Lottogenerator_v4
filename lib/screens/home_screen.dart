@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 
 import 'lotto6/lotto6_screen.dart';
@@ -12,7 +13,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lottogenerator v4'),
+        title: const Text('Lotto Generator'),
         centerTitle: true,
       ),
       body: Padding(
@@ -25,7 +26,6 @@ class HomeScreen extends StatelessWidget {
             _tile(
               context,
               title: 'Lotto 6aus49',
-              subtitle: 'Tipps & Schein',
               icon: Icons.confirmation_number,
               onTap: () {
                 Navigator.push(
@@ -39,7 +39,6 @@ class HomeScreen extends StatelessWidget {
             _tile(
               context,
               title: 'Eurojackpot',
-              subtitle: 'Tipps & Schein',
               icon: Icons.euro,
               onTap: () {
                 Navigator.push(
@@ -53,8 +52,7 @@ class HomeScreen extends StatelessWidget {
             _tile(
               context,
               title: 'Datenimport',
-              subtitle: 'TXT / Manuell',
-              icon: Icons.upload_file,
+              icon: Icons.download,
               onTap: () {
                 Navigator.push(
                   context,
@@ -67,9 +65,10 @@ class HomeScreen extends StatelessWidget {
             _tile(
               context,
               title: 'Statistik',
-              subtitle: 'kommt danach',
-              icon: Icons.bar_chart,
-              onTap: () {},
+              icon: Icons.analytics,
+              onTap: () {
+                // kommt im nächsten Schritt
+              },
             ),
           ],
         ),
@@ -80,7 +79,6 @@ class HomeScreen extends StatelessWidget {
   Widget _tile(
     BuildContext context, {
     required String title,
-    required String subtitle,
     required IconData icon,
     required VoidCallback onTap,
   }) {
@@ -100,15 +98,11 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               title,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 12),
             ),
           ],
         ),
