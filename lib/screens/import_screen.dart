@@ -1,11 +1,11 @@
 // ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/txt_lotto_parser.dart';
 import '../services/txt_eurojackpot_parser.dart';
 import '../models/parse_result.dart';
+import 'statistics_screen.dart';
 
 enum ImportType { lotto, eurojackpot }
 
@@ -21,7 +21,7 @@ class _ImportScreenState extends State<ImportScreen> {
   final TextEditingController _controller = TextEditingController();
 
   ParseResult? _result;
-  String _status = 'Bereit';
+  String _status = '';
 
   Future<void> _loadAsset() async {
     final path = _type == ImportType.lotto
@@ -33,8 +33,8 @@ class _ImportScreenState extends State<ImportScreen> {
       _result = null;
       _status = 'Asset geladen: $path';
     } catch (_) {
-      _status = 'FEHLER: Asset nicht gefunden';
       _result = null;
+      _status = 'FEHLER: Asset nicht gefunden';
     }
     setState(() {});
   }
@@ -46,7 +46,7 @@ class _ImportScreenState extends State<ImportScreen> {
           : parseEurojackpotTxt(_controller.text);
 
       _status =
-          'OK – gültig: ${_result!.valid}, Fehler: ${_result!.errors}';
+          'OK: ${_result!.valid} gültig, ${_result!.errors} Fehler';
     } catch (_) {
       _result = null;
       _status = 'PARSER-FEHLER';
@@ -54,16 +54,31 @@ class _ImportScreenState extends State<ImportScreen> {
     setState(() {});
   }
 
+  void _openStatistics() {
+    if (_result == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StatisticsScreen(
+          title: _type == ImportType.lotto
+              ? 'Lotto Statistik'
+              : 'Eurojackpot Statistik',
+          entries: _result!.entries,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Datenimport'),
+        title: const Text('Import'),
         centerTitle: true,
       ),
       body: Column(
         children: [
-          // HEADER (zweistufig dunkler)
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -92,19 +107,15 @@ class _ImportScreenState extends State<ImportScreen> {
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.folder_open),
-                  tooltip: 'Asset laden',
                   onPressed: _loadAsset,
                 ),
                 IconButton(
                   icon: const Icon(Icons.play_arrow),
-                  tooltip: 'Parser ausführen',
                   onPressed: _parse,
                 ),
               ],
             ),
           ),
-
-          // TEXTFELD (manueller Import)
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -114,7 +125,7 @@ class _ImportScreenState extends State<ImportScreen> {
                 maxLines: null,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  hintText: 'TXT hier einfügen oder Asset laden …',
+                  hintText: 'TXT einfügen oder Asset laden …',
                 ),
                 style: const TextStyle(
                   fontFamily: 'monospace',
@@ -123,18 +134,29 @@ class _ImportScreenState extends State<ImportScreen> {
               ),
             ),
           ),
-
-          // STATUS
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             color: Colors.black,
-            child: Text(
-              _status,
-              style: const TextStyle(
-                color: Colors.greenAccent,
-                fontFamily: 'monospace',
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _status,
+                  style: const TextStyle(
+                    color: Colors.greenAccent,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                if (_result != null) ...[
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: _openStatistics,
+                    icon: const Icon(Icons.analytics),
+                    label: const Text('Statistik öffnen'),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

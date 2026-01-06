@@ -1,10 +1,9 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 
 import 'lotto6/lotto6_screen.dart';
 import 'eurojackpot_screen.dart';
-import 'database_import_screen.dart';
+import 'import_screen.dart';
+import 'statistics_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -30,9 +29,7 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const Lotto6Screen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const Lotto6Screen()),
                 );
               },
             ),
@@ -43,22 +40,18 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const EurojackpotScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const EurojackpotScreen()),
                 );
               },
             ),
             _tile(
               context,
-              title: 'Datenimport',
+              title: 'Import',
               icon: Icons.download,
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const DatabaseImportScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const ImportScreen()),
                 );
               },
             ),
@@ -67,7 +60,15 @@ class HomeScreen extends StatelessWidget {
               title: 'Statistik',
               icon: Icons.analytics,
               onTap: () {
-                // kommt im nächsten Schritt
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const StatisticsScreen(
+                      title: 'Statistik',
+                      entries: [],
+                    ),
+                  ),
+                );
               },
             ),
           ],
